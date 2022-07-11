@@ -1,0 +1,389 @@
+circuit Parallel_sbox_opt :
+  module Parallel_sbox_opt :
+    input clock : Clock
+    input reset : UInt<1>
+    input io_i0_0 : UInt<1>
+    input io_i0_1 : UInt<1>
+    input io_i1_0 : UInt<1>
+    input io_i1_1 : UInt<1>
+    input io_i2_0 : UInt<1>
+    input io_i2_1 : UInt<1>
+    input io_i3_0 : UInt<1>
+    input io_i3_1 : UInt<1>
+    input io_i4_0 : UInt<1>
+    input io_i4_1 : UInt<1>
+    input io_i5_0 : UInt<1>
+    input io_i5_1 : UInt<1>
+    input io_i6_0 : UInt<1>
+    input io_i6_1 : UInt<1>
+    input io_i7_0 : UInt<1>
+    input io_i7_1 : UInt<1>
+    output io_o0_0 : UInt<1>
+    output io_o0_1 : UInt<1>
+    output io_o1_0 : UInt<1>
+    output io_o1_1 : UInt<1>
+    output io_o2_0 : UInt<1>
+    output io_o2_1 : UInt<1>
+    output io_o3_0 : UInt<1>
+    output io_o3_1 : UInt<1>
+    output io_o4_0 : UInt<1>
+    output io_o4_1 : UInt<1>
+    output io_o5_0 : UInt<1>
+    output io_o5_1 : UInt<1>
+    output io_o6_0 : UInt<1>
+    output io_o6_1 : UInt<1>
+    output io_o7_0 : UInt<1>
+    output io_o7_1 : UInt<1>
+  
+    wire Sbox_opt_clock : Clock
+    wire Sbox_opt_reset : UInt<1>
+    wire Sbox_opt_io_i0 : UInt<1>
+    wire Sbox_opt_io_i1 : UInt<1>
+    wire Sbox_opt_io_i2 : UInt<1>
+    wire Sbox_opt_io_i3 : UInt<1>
+    wire Sbox_opt_io_i4 : UInt<1>
+    wire Sbox_opt_io_i5 : UInt<1>
+    wire Sbox_opt_io_i6 : UInt<1>
+    wire Sbox_opt_io_i7 : UInt<1>
+    wire Sbox_opt_io_o0 : UInt<1>
+    wire Sbox_opt_io_o1 : UInt<1>
+    wire Sbox_opt_io_o2 : UInt<1>
+    wire Sbox_opt_io_o3 : UInt<1>
+    wire Sbox_opt_io_o4 : UInt<1>
+    wire Sbox_opt_io_o5 : UInt<1>
+    wire Sbox_opt_io_o6 : UInt<1>
+    wire Sbox_opt_io_o7 : UInt<1>
+    node Sbox_opt_t1 = xor(Sbox_opt_io_i0, Sbox_opt_io_i3) @[Sbox.scala 431:20]
+    node Sbox_opt_t2 = xor(Sbox_opt_io_i0, Sbox_opt_io_i5) @[Sbox.scala 432:20]
+    node Sbox_opt_t3 = xor(Sbox_opt_io_i0, Sbox_opt_io_i6) @[Sbox.scala 433:20]
+    node Sbox_opt_t4 = xor(Sbox_opt_io_i3, Sbox_opt_io_i5) @[Sbox.scala 434:20]
+    node Sbox_opt_t5 = xor(Sbox_opt_io_i4, Sbox_opt_io_i6) @[Sbox.scala 435:20]
+    node Sbox_opt_t6 = xor(Sbox_opt_t1, Sbox_opt_t5) @[Sbox.scala 436:17]
+    node Sbox_opt_t7 = xor(Sbox_opt_io_i1, Sbox_opt_io_i2) @[Sbox.scala 437:20]
+    node Sbox_opt_t8 = xor(Sbox_opt_io_i7, Sbox_opt_t6) @[Sbox.scala 438:20]
+    node Sbox_opt_t9 = xor(Sbox_opt_io_i7, Sbox_opt_t7) @[Sbox.scala 439:20]
+    node Sbox_opt_t10 = xor(Sbox_opt_t6, Sbox_opt_t7) @[Sbox.scala 440:18]
+    node Sbox_opt_t11 = xor(Sbox_opt_io_i1, Sbox_opt_io_i5) @[Sbox.scala 441:21]
+    node Sbox_opt_t12 = xor(Sbox_opt_io_i2, Sbox_opt_io_i5) @[Sbox.scala 442:21]
+    node Sbox_opt_t13 = xor(Sbox_opt_t3, Sbox_opt_t4) @[Sbox.scala 443:18]
+    node Sbox_opt_t14 = xor(Sbox_opt_t6, Sbox_opt_t11) @[Sbox.scala 444:18]
+    node Sbox_opt_t15 = xor(Sbox_opt_t5, Sbox_opt_t11) @[Sbox.scala 445:18]
+    node Sbox_opt_t16 = xor(Sbox_opt_t5, Sbox_opt_t12) @[Sbox.scala 446:18]
+    node Sbox_opt_t17 = xor(Sbox_opt_t9, Sbox_opt_t16) @[Sbox.scala 447:18]
+    node Sbox_opt_t18 = xor(Sbox_opt_io_i3, Sbox_opt_io_i7) @[Sbox.scala 448:21]
+    node Sbox_opt_t19 = xor(Sbox_opt_t7, Sbox_opt_t18) @[Sbox.scala 449:18]
+    node Sbox_opt_t20 = xor(Sbox_opt_t1, Sbox_opt_t19) @[Sbox.scala 450:18]
+    node Sbox_opt_t21 = xor(Sbox_opt_io_i6, Sbox_opt_io_i7) @[Sbox.scala 451:21]
+    node Sbox_opt_t22 = xor(Sbox_opt_t7, Sbox_opt_t21) @[Sbox.scala 452:18]
+    node Sbox_opt_t23 = xor(Sbox_opt_t2, Sbox_opt_t22) @[Sbox.scala 453:18]
+    node Sbox_opt_t24 = xor(Sbox_opt_t2, Sbox_opt_t10) @[Sbox.scala 454:18]
+    node Sbox_opt_t25 = xor(Sbox_opt_t20, Sbox_opt_t17) @[Sbox.scala 455:19]
+    node Sbox_opt_t26 = xor(Sbox_opt_t3, Sbox_opt_t16) @[Sbox.scala 456:18]
+    node Sbox_opt_t27 = xor(Sbox_opt_t1, Sbox_opt_t12) @[Sbox.scala 457:18]
+    node Sbox_opt_m1 = and(Sbox_opt_t13, Sbox_opt_t6) @[Sbox.scala 459:18]
+    node Sbox_opt_m2 = and(Sbox_opt_t23, Sbox_opt_t8) @[Sbox.scala 460:18]
+    node Sbox_opt_m3 = xor(Sbox_opt_t14, Sbox_opt_m1) @[Sbox.scala 461:18]
+    node Sbox_opt_m4 = and(Sbox_opt_t19, Sbox_opt_io_i7) @[Sbox.scala 462:18]
+    node Sbox_opt_m5 = xor(Sbox_opt_m4, Sbox_opt_m1) @[Sbox.scala 463:17]
+    node Sbox_opt_m6 = and(Sbox_opt_t3, Sbox_opt_t16) @[Sbox.scala 464:17]
+    node Sbox_opt_m7 = and(Sbox_opt_t22, Sbox_opt_t9) @[Sbox.scala 465:18]
+    node Sbox_opt_m8 = xor(Sbox_opt_t26, Sbox_opt_m6) @[Sbox.scala 466:18]
+    node Sbox_opt_m9 = and(Sbox_opt_t20, Sbox_opt_t17) @[Sbox.scala 467:18]
+    node Sbox_opt_m10 = xor(Sbox_opt_m9, Sbox_opt_m6) @[Sbox.scala 468:18]
+    node Sbox_opt_m11 = and(Sbox_opt_t1, Sbox_opt_t15) @[Sbox.scala 469:18]
+    node Sbox_opt_m12 = and(Sbox_opt_t4, Sbox_opt_t27) @[Sbox.scala 470:18]
+    node Sbox_opt_m13 = xor(Sbox_opt_m12, Sbox_opt_m11) @[Sbox.scala 471:19]
+    node Sbox_opt_m14 = and(Sbox_opt_t2, Sbox_opt_t10) @[Sbox.scala 472:18]
+    node Sbox_opt_m15 = xor(Sbox_opt_m14, Sbox_opt_m11) @[Sbox.scala 473:19]
+    node Sbox_opt_m16 = xor(Sbox_opt_m3, Sbox_opt_m2) @[Sbox.scala 474:18]
+    node Sbox_opt_m17 = xor(Sbox_opt_m5, Sbox_opt_t24) @[Sbox.scala 475:18]
+    node Sbox_opt_m18 = xor(Sbox_opt_m8, Sbox_opt_m7) @[Sbox.scala 476:18]
+    node Sbox_opt_m19 = xor(Sbox_opt_m10, Sbox_opt_m15) @[Sbox.scala 477:19]
+    node Sbox_opt_m20 = xor(Sbox_opt_m16, Sbox_opt_m13) @[Sbox.scala 478:19]
+    node Sbox_opt_m21 = xor(Sbox_opt_m17, Sbox_opt_m15) @[Sbox.scala 479:19]
+    node Sbox_opt_m22 = xor(Sbox_opt_m18, Sbox_opt_m13) @[Sbox.scala 480:19]
+    node Sbox_opt_m23 = xor(Sbox_opt_m19, Sbox_opt_t25) @[Sbox.scala 481:19]
+    node Sbox_opt_m24 = xor(Sbox_opt_m22, Sbox_opt_m23) @[Sbox.scala 482:19]
+    node Sbox_opt_m25 = and(Sbox_opt_m22, Sbox_opt_m20) @[Sbox.scala 483:19]
+    node Sbox_opt_m26 = xor(Sbox_opt_m21, Sbox_opt_m25) @[Sbox.scala 484:19]
+    node Sbox_opt_m27 = xor(Sbox_opt_m20, Sbox_opt_m21) @[Sbox.scala 485:19]
+    node Sbox_opt_m28 = xor(Sbox_opt_m23, Sbox_opt_m25) @[Sbox.scala 486:19]
+    node Sbox_opt_m29 = and(Sbox_opt_m28, Sbox_opt_m27) @[Sbox.scala 487:19]
+    node Sbox_opt_m30 = and(Sbox_opt_m26, Sbox_opt_m24) @[Sbox.scala 488:19]
+    node Sbox_opt_m31 = and(Sbox_opt_m20, Sbox_opt_m23) @[Sbox.scala 489:19]
+    node Sbox_opt_m32 = and(Sbox_opt_m27, Sbox_opt_m31) @[Sbox.scala 490:19]
+    node Sbox_opt_m33 = xor(Sbox_opt_m27, Sbox_opt_m25) @[Sbox.scala 491:19]
+    node Sbox_opt_m34 = and(Sbox_opt_m21, Sbox_opt_m22) @[Sbox.scala 492:19]
+    node Sbox_opt_m35 = and(Sbox_opt_m24, Sbox_opt_m34) @[Sbox.scala 493:19]
+    node Sbox_opt_m36 = xor(Sbox_opt_m24, Sbox_opt_m25) @[Sbox.scala 494:19]
+    node Sbox_opt_m37 = xor(Sbox_opt_m21, Sbox_opt_m29) @[Sbox.scala 495:19]
+    node Sbox_opt_m38 = xor(Sbox_opt_m32, Sbox_opt_m33) @[Sbox.scala 496:19]
+    node Sbox_opt_m39 = xor(Sbox_opt_m23, Sbox_opt_m30) @[Sbox.scala 497:19]
+    node Sbox_opt_m40 = xor(Sbox_opt_m35, Sbox_opt_m36) @[Sbox.scala 498:19]
+    node Sbox_opt_m41 = xor(Sbox_opt_m38, Sbox_opt_m40) @[Sbox.scala 499:19]
+    node Sbox_opt_m42 = xor(Sbox_opt_m37, Sbox_opt_m39) @[Sbox.scala 500:19]
+    node Sbox_opt_m43 = xor(Sbox_opt_m37, Sbox_opt_m38) @[Sbox.scala 501:19]
+    node Sbox_opt_m44 = xor(Sbox_opt_m39, Sbox_opt_m40) @[Sbox.scala 502:19]
+    node Sbox_opt_m45 = xor(Sbox_opt_m42, Sbox_opt_m41) @[Sbox.scala 503:19]
+    node Sbox_opt_m46 = and(Sbox_opt_m44, Sbox_opt_t6) @[Sbox.scala 504:19]
+    node Sbox_opt_m47 = and(Sbox_opt_m40, Sbox_opt_t8) @[Sbox.scala 505:19]
+    node Sbox_opt_m48 = and(Sbox_opt_m39, Sbox_opt_io_i7) @[Sbox.scala 506:19]
+    node Sbox_opt_m49 = and(Sbox_opt_m43, Sbox_opt_t16) @[Sbox.scala 507:19]
+    node Sbox_opt_m50 = and(Sbox_opt_m38, Sbox_opt_t9) @[Sbox.scala 508:19]
+    node Sbox_opt_m51 = and(Sbox_opt_m37, Sbox_opt_t17) @[Sbox.scala 509:19]
+    node Sbox_opt_m52 = and(Sbox_opt_m42, Sbox_opt_t15) @[Sbox.scala 510:19]
+    node Sbox_opt_m53 = and(Sbox_opt_m45, Sbox_opt_t27) @[Sbox.scala 511:19]
+    node Sbox_opt_m54 = and(Sbox_opt_m41, Sbox_opt_t10) @[Sbox.scala 512:19]
+    node Sbox_opt_m55 = and(Sbox_opt_m44, Sbox_opt_t13) @[Sbox.scala 513:19]
+    node Sbox_opt_m56 = and(Sbox_opt_m40, Sbox_opt_t23) @[Sbox.scala 514:19]
+    node Sbox_opt_m57 = and(Sbox_opt_m39, Sbox_opt_t19) @[Sbox.scala 515:19]
+    node Sbox_opt_m58 = and(Sbox_opt_m43, Sbox_opt_t3) @[Sbox.scala 516:19]
+    node Sbox_opt_m59 = and(Sbox_opt_m38, Sbox_opt_t22) @[Sbox.scala 517:19]
+    node Sbox_opt_m60 = and(Sbox_opt_m37, Sbox_opt_t20) @[Sbox.scala 518:19]
+    node Sbox_opt_m61 = and(Sbox_opt_m42, Sbox_opt_t1) @[Sbox.scala 519:19]
+    node Sbox_opt_m62 = and(Sbox_opt_m45, Sbox_opt_t4) @[Sbox.scala 520:19]
+    node Sbox_opt_m63 = and(Sbox_opt_m41, Sbox_opt_t2) @[Sbox.scala 521:19]
+    node Sbox_opt_l0 = xor(Sbox_opt_m61, Sbox_opt_m62) @[Sbox.scala 523:18]
+    node Sbox_opt_l1 = xor(Sbox_opt_m50, Sbox_opt_m56) @[Sbox.scala 524:18]
+    node Sbox_opt_l2 = xor(Sbox_opt_m46, Sbox_opt_m48) @[Sbox.scala 525:18]
+    node Sbox_opt_l3 = xor(Sbox_opt_m47, Sbox_opt_m55) @[Sbox.scala 526:18]
+    node Sbox_opt_l4 = xor(Sbox_opt_m54, Sbox_opt_m58) @[Sbox.scala 527:18]
+    node Sbox_opt_l5 = xor(Sbox_opt_m49, Sbox_opt_m61) @[Sbox.scala 528:18]
+    node Sbox_opt_l6 = xor(Sbox_opt_m62, Sbox_opt_l5) @[Sbox.scala 529:18]
+    node Sbox_opt_l7 = xor(Sbox_opt_m46, Sbox_opt_l3) @[Sbox.scala 530:18]
+    node Sbox_opt_l8 = xor(Sbox_opt_m51, Sbox_opt_m59) @[Sbox.scala 531:18]
+    node Sbox_opt_l9 = xor(Sbox_opt_m52, Sbox_opt_m53) @[Sbox.scala 532:18]
+    node Sbox_opt_l10 = xor(Sbox_opt_m53, Sbox_opt_l4) @[Sbox.scala 533:19]
+    node Sbox_opt_l11 = xor(Sbox_opt_m60, Sbox_opt_l2) @[Sbox.scala 534:19]
+    node Sbox_opt_l12 = xor(Sbox_opt_m48, Sbox_opt_m51) @[Sbox.scala 535:19]
+    node Sbox_opt_l13 = xor(Sbox_opt_m50, Sbox_opt_l0) @[Sbox.scala 536:19]
+    node Sbox_opt_l14 = xor(Sbox_opt_m52, Sbox_opt_m61) @[Sbox.scala 537:19]
+    node Sbox_opt_l15 = xor(Sbox_opt_m55, Sbox_opt_l1) @[Sbox.scala 538:19]
+    node Sbox_opt_l16 = xor(Sbox_opt_m56, Sbox_opt_l0) @[Sbox.scala 539:19]
+    node Sbox_opt_l17 = xor(Sbox_opt_m57, Sbox_opt_l1) @[Sbox.scala 540:19]
+    node Sbox_opt_l18 = xor(Sbox_opt_m58, Sbox_opt_l8) @[Sbox.scala 541:19]
+    node Sbox_opt_l19 = xor(Sbox_opt_m63, Sbox_opt_l4) @[Sbox.scala 542:19]
+    node Sbox_opt_l20 = xor(Sbox_opt_l0, Sbox_opt_l1) @[Sbox.scala 543:18]
+    node Sbox_opt_l21 = xor(Sbox_opt_l1, Sbox_opt_l7) @[Sbox.scala 544:18]
+    node Sbox_opt_l22 = xor(Sbox_opt_l3, Sbox_opt_l12) @[Sbox.scala 545:18]
+    node Sbox_opt_l23 = xor(Sbox_opt_l18, Sbox_opt_l2) @[Sbox.scala 546:19]
+    node Sbox_opt_l24 = xor(Sbox_opt_l15, Sbox_opt_l9) @[Sbox.scala 547:19]
+    node Sbox_opt_l25 = xor(Sbox_opt_l6, Sbox_opt_l10) @[Sbox.scala 548:18]
+    node Sbox_opt_l26 = xor(Sbox_opt_l7, Sbox_opt_l9) @[Sbox.scala 549:18]
+    node Sbox_opt_l27 = xor(Sbox_opt_l8, Sbox_opt_l10) @[Sbox.scala 550:18]
+    node Sbox_opt_l28 = xor(Sbox_opt_l11, Sbox_opt_l14) @[Sbox.scala 551:19]
+    node Sbox_opt_l29 = xor(Sbox_opt_l11, Sbox_opt_l17) @[Sbox.scala 552:19]
+    node Sbox_opt__T = xor(Sbox_opt_l6, Sbox_opt_l24) @[Sbox.scala 554:17]
+    node Sbox_opt__T_1 = xor(Sbox_opt_l16, Sbox_opt_l26) @[Sbox.scala 555:20]
+    node Sbox_opt__T_2 = not(Sbox_opt__T_1) @[Sbox.scala 555:14]
+    node Sbox_opt__T_3 = xor(Sbox_opt_l19, Sbox_opt_l28) @[Sbox.scala 556:20]
+    node Sbox_opt__T_4 = not(Sbox_opt__T_3) @[Sbox.scala 556:14]
+    node Sbox_opt__T_5 = xor(Sbox_opt_l6, Sbox_opt_l21) @[Sbox.scala 557:17]
+    node Sbox_opt__T_6 = xor(Sbox_opt_l20, Sbox_opt_l22) @[Sbox.scala 558:18]
+    node Sbox_opt__T_7 = xor(Sbox_opt_l25, Sbox_opt_l29) @[Sbox.scala 559:18]
+    node Sbox_opt__T_8 = xor(Sbox_opt_l13, Sbox_opt_l27) @[Sbox.scala 560:20]
+    node Sbox_opt__T_9 = not(Sbox_opt__T_8) @[Sbox.scala 560:14]
+    node Sbox_opt__T_10 = xor(Sbox_opt_l6, Sbox_opt_l23) @[Sbox.scala 561:19]
+    node Sbox_opt__T_11 = not(Sbox_opt__T_10) @[Sbox.scala 561:14]
+    Sbox_opt_io_o0 <= Sbox_opt__T @[Sbox.scala 554:11]
+    Sbox_opt_io_o1 <= Sbox_opt__T_2 @[Sbox.scala 555:11]
+    Sbox_opt_io_o2 <= Sbox_opt__T_4 @[Sbox.scala 556:11]
+    Sbox_opt_io_o3 <= Sbox_opt__T_5 @[Sbox.scala 557:11]
+    Sbox_opt_io_o4 <= Sbox_opt__T_6 @[Sbox.scala 558:11]
+    Sbox_opt_io_o5 <= Sbox_opt__T_7 @[Sbox.scala 559:11]
+    Sbox_opt_io_o6 <= Sbox_opt__T_9 @[Sbox.scala 560:11]
+    Sbox_opt_io_o7 <= Sbox_opt__T_11 @[Sbox.scala 561:11]
+    wire Sbox_opt_1_clock : Clock
+    wire Sbox_opt_1_reset : UInt<1>
+    wire Sbox_opt_1_io_i0 : UInt<1>
+    wire Sbox_opt_1_io_i1 : UInt<1>
+    wire Sbox_opt_1_io_i2 : UInt<1>
+    wire Sbox_opt_1_io_i3 : UInt<1>
+    wire Sbox_opt_1_io_i4 : UInt<1>
+    wire Sbox_opt_1_io_i5 : UInt<1>
+    wire Sbox_opt_1_io_i6 : UInt<1>
+    wire Sbox_opt_1_io_i7 : UInt<1>
+    wire Sbox_opt_1_io_o0 : UInt<1>
+    wire Sbox_opt_1_io_o1 : UInt<1>
+    wire Sbox_opt_1_io_o2 : UInt<1>
+    wire Sbox_opt_1_io_o3 : UInt<1>
+    wire Sbox_opt_1_io_o4 : UInt<1>
+    wire Sbox_opt_1_io_o5 : UInt<1>
+    wire Sbox_opt_1_io_o6 : UInt<1>
+    wire Sbox_opt_1_io_o7 : UInt<1>
+    node Sbox_opt_1_t1 = xor(Sbox_opt_1_io_i0, Sbox_opt_1_io_i3) @[Sbox.scala 431:20]
+    node Sbox_opt_1_t2 = xor(Sbox_opt_1_io_i0, Sbox_opt_1_io_i5) @[Sbox.scala 432:20]
+    node Sbox_opt_1_t3 = xor(Sbox_opt_1_io_i0, Sbox_opt_1_io_i6) @[Sbox.scala 433:20]
+    node Sbox_opt_1_t4 = xor(Sbox_opt_1_io_i3, Sbox_opt_1_io_i5) @[Sbox.scala 434:20]
+    node Sbox_opt_1_t5 = xor(Sbox_opt_1_io_i4, Sbox_opt_1_io_i6) @[Sbox.scala 435:20]
+    node Sbox_opt_1_t6 = xor(Sbox_opt_1_t1, Sbox_opt_1_t5) @[Sbox.scala 436:17]
+    node Sbox_opt_1_t7 = xor(Sbox_opt_1_io_i1, Sbox_opt_1_io_i2) @[Sbox.scala 437:20]
+    node Sbox_opt_1_t8 = xor(Sbox_opt_1_io_i7, Sbox_opt_1_t6) @[Sbox.scala 438:20]
+    node Sbox_opt_1_t9 = xor(Sbox_opt_1_io_i7, Sbox_opt_1_t7) @[Sbox.scala 439:20]
+    node Sbox_opt_1_t10 = xor(Sbox_opt_1_t6, Sbox_opt_1_t7) @[Sbox.scala 440:18]
+    node Sbox_opt_1_t11 = xor(Sbox_opt_1_io_i1, Sbox_opt_1_io_i5) @[Sbox.scala 441:21]
+    node Sbox_opt_1_t12 = xor(Sbox_opt_1_io_i2, Sbox_opt_1_io_i5) @[Sbox.scala 442:21]
+    node Sbox_opt_1_t13 = xor(Sbox_opt_1_t3, Sbox_opt_1_t4) @[Sbox.scala 443:18]
+    node Sbox_opt_1_t14 = xor(Sbox_opt_1_t6, Sbox_opt_1_t11) @[Sbox.scala 444:18]
+    node Sbox_opt_1_t15 = xor(Sbox_opt_1_t5, Sbox_opt_1_t11) @[Sbox.scala 445:18]
+    node Sbox_opt_1_t16 = xor(Sbox_opt_1_t5, Sbox_opt_1_t12) @[Sbox.scala 446:18]
+    node Sbox_opt_1_t17 = xor(Sbox_opt_1_t9, Sbox_opt_1_t16) @[Sbox.scala 447:18]
+    node Sbox_opt_1_t18 = xor(Sbox_opt_1_io_i3, Sbox_opt_1_io_i7) @[Sbox.scala 448:21]
+    node Sbox_opt_1_t19 = xor(Sbox_opt_1_t7, Sbox_opt_1_t18) @[Sbox.scala 449:18]
+    node Sbox_opt_1_t20 = xor(Sbox_opt_1_t1, Sbox_opt_1_t19) @[Sbox.scala 450:18]
+    node Sbox_opt_1_t21 = xor(Sbox_opt_1_io_i6, Sbox_opt_1_io_i7) @[Sbox.scala 451:21]
+    node Sbox_opt_1_t22 = xor(Sbox_opt_1_t7, Sbox_opt_1_t21) @[Sbox.scala 452:18]
+    node Sbox_opt_1_t23 = xor(Sbox_opt_1_t2, Sbox_opt_1_t22) @[Sbox.scala 453:18]
+    node Sbox_opt_1_t24 = xor(Sbox_opt_1_t2, Sbox_opt_1_t10) @[Sbox.scala 454:18]
+    node Sbox_opt_1_t25 = xor(Sbox_opt_1_t20, Sbox_opt_1_t17) @[Sbox.scala 455:19]
+    node Sbox_opt_1_t26 = xor(Sbox_opt_1_t3, Sbox_opt_1_t16) @[Sbox.scala 456:18]
+    node Sbox_opt_1_t27 = xor(Sbox_opt_1_t1, Sbox_opt_1_t12) @[Sbox.scala 457:18]
+    node Sbox_opt_1_m1 = and(Sbox_opt_1_t13, Sbox_opt_1_t6) @[Sbox.scala 459:18]
+    node Sbox_opt_1_m2 = and(Sbox_opt_1_t23, Sbox_opt_1_t8) @[Sbox.scala 460:18]
+    node Sbox_opt_1_m3 = xor(Sbox_opt_1_t14, Sbox_opt_1_m1) @[Sbox.scala 461:18]
+    node Sbox_opt_1_m4 = and(Sbox_opt_1_t19, Sbox_opt_1_io_i7) @[Sbox.scala 462:18]
+    node Sbox_opt_1_m5 = xor(Sbox_opt_1_m4, Sbox_opt_1_m1) @[Sbox.scala 463:17]
+    node Sbox_opt_1_m6 = and(Sbox_opt_1_t3, Sbox_opt_1_t16) @[Sbox.scala 464:17]
+    node Sbox_opt_1_m7 = and(Sbox_opt_1_t22, Sbox_opt_1_t9) @[Sbox.scala 465:18]
+    node Sbox_opt_1_m8 = xor(Sbox_opt_1_t26, Sbox_opt_1_m6) @[Sbox.scala 466:18]
+    node Sbox_opt_1_m9 = and(Sbox_opt_1_t20, Sbox_opt_1_t17) @[Sbox.scala 467:18]
+    node Sbox_opt_1_m10 = xor(Sbox_opt_1_m9, Sbox_opt_1_m6) @[Sbox.scala 468:18]
+    node Sbox_opt_1_m11 = and(Sbox_opt_1_t1, Sbox_opt_1_t15) @[Sbox.scala 469:18]
+    node Sbox_opt_1_m12 = and(Sbox_opt_1_t4, Sbox_opt_1_t27) @[Sbox.scala 470:18]
+    node Sbox_opt_1_m13 = xor(Sbox_opt_1_m12, Sbox_opt_1_m11) @[Sbox.scala 471:19]
+    node Sbox_opt_1_m14 = and(Sbox_opt_1_t2, Sbox_opt_1_t10) @[Sbox.scala 472:18]
+    node Sbox_opt_1_m15 = xor(Sbox_opt_1_m14, Sbox_opt_1_m11) @[Sbox.scala 473:19]
+    node Sbox_opt_1_m16 = xor(Sbox_opt_1_m3, Sbox_opt_1_m2) @[Sbox.scala 474:18]
+    node Sbox_opt_1_m17 = xor(Sbox_opt_1_m5, Sbox_opt_1_t24) @[Sbox.scala 475:18]
+    node Sbox_opt_1_m18 = xor(Sbox_opt_1_m8, Sbox_opt_1_m7) @[Sbox.scala 476:18]
+    node Sbox_opt_1_m19 = xor(Sbox_opt_1_m10, Sbox_opt_1_m15) @[Sbox.scala 477:19]
+    node Sbox_opt_1_m20 = xor(Sbox_opt_1_m16, Sbox_opt_1_m13) @[Sbox.scala 478:19]
+    node Sbox_opt_1_m21 = xor(Sbox_opt_1_m17, Sbox_opt_1_m15) @[Sbox.scala 479:19]
+    node Sbox_opt_1_m22 = xor(Sbox_opt_1_m18, Sbox_opt_1_m13) @[Sbox.scala 480:19]
+    node Sbox_opt_1_m23 = xor(Sbox_opt_1_m19, Sbox_opt_1_t25) @[Sbox.scala 481:19]
+    node Sbox_opt_1_m24 = xor(Sbox_opt_1_m22, Sbox_opt_1_m23) @[Sbox.scala 482:19]
+    node Sbox_opt_1_m25 = and(Sbox_opt_1_m22, Sbox_opt_1_m20) @[Sbox.scala 483:19]
+    node Sbox_opt_1_m26 = xor(Sbox_opt_1_m21, Sbox_opt_1_m25) @[Sbox.scala 484:19]
+    node Sbox_opt_1_m27 = xor(Sbox_opt_1_m20, Sbox_opt_1_m21) @[Sbox.scala 485:19]
+    node Sbox_opt_1_m28 = xor(Sbox_opt_1_m23, Sbox_opt_1_m25) @[Sbox.scala 486:19]
+    node Sbox_opt_1_m29 = and(Sbox_opt_1_m28, Sbox_opt_1_m27) @[Sbox.scala 487:19]
+    node Sbox_opt_1_m30 = and(Sbox_opt_1_m26, Sbox_opt_1_m24) @[Sbox.scala 488:19]
+    node Sbox_opt_1_m31 = and(Sbox_opt_1_m20, Sbox_opt_1_m23) @[Sbox.scala 489:19]
+    node Sbox_opt_1_m32 = and(Sbox_opt_1_m27, Sbox_opt_1_m31) @[Sbox.scala 490:19]
+    node Sbox_opt_1_m33 = xor(Sbox_opt_1_m27, Sbox_opt_1_m25) @[Sbox.scala 491:19]
+    node Sbox_opt_1_m34 = and(Sbox_opt_1_m21, Sbox_opt_1_m22) @[Sbox.scala 492:19]
+    node Sbox_opt_1_m35 = and(Sbox_opt_1_m24, Sbox_opt_1_m34) @[Sbox.scala 493:19]
+    node Sbox_opt_1_m36 = xor(Sbox_opt_1_m24, Sbox_opt_1_m25) @[Sbox.scala 494:19]
+    node Sbox_opt_1_m37 = xor(Sbox_opt_1_m21, Sbox_opt_1_m29) @[Sbox.scala 495:19]
+    node Sbox_opt_1_m38 = xor(Sbox_opt_1_m32, Sbox_opt_1_m33) @[Sbox.scala 496:19]
+    node Sbox_opt_1_m39 = xor(Sbox_opt_1_m23, Sbox_opt_1_m30) @[Sbox.scala 497:19]
+    node Sbox_opt_1_m40 = xor(Sbox_opt_1_m35, Sbox_opt_1_m36) @[Sbox.scala 498:19]
+    node Sbox_opt_1_m41 = xor(Sbox_opt_1_m38, Sbox_opt_1_m40) @[Sbox.scala 499:19]
+    node Sbox_opt_1_m42 = xor(Sbox_opt_1_m37, Sbox_opt_1_m39) @[Sbox.scala 500:19]
+    node Sbox_opt_1_m43 = xor(Sbox_opt_1_m37, Sbox_opt_1_m38) @[Sbox.scala 501:19]
+    node Sbox_opt_1_m44 = xor(Sbox_opt_1_m39, Sbox_opt_1_m40) @[Sbox.scala 502:19]
+    node Sbox_opt_1_m45 = xor(Sbox_opt_1_m42, Sbox_opt_1_m41) @[Sbox.scala 503:19]
+    node Sbox_opt_1_m46 = and(Sbox_opt_1_m44, Sbox_opt_1_t6) @[Sbox.scala 504:19]
+    node Sbox_opt_1_m47 = and(Sbox_opt_1_m40, Sbox_opt_1_t8) @[Sbox.scala 505:19]
+    node Sbox_opt_1_m48 = and(Sbox_opt_1_m39, Sbox_opt_1_io_i7) @[Sbox.scala 506:19]
+    node Sbox_opt_1_m49 = and(Sbox_opt_1_m43, Sbox_opt_1_t16) @[Sbox.scala 507:19]
+    node Sbox_opt_1_m50 = and(Sbox_opt_1_m38, Sbox_opt_1_t9) @[Sbox.scala 508:19]
+    node Sbox_opt_1_m51 = and(Sbox_opt_1_m37, Sbox_opt_1_t17) @[Sbox.scala 509:19]
+    node Sbox_opt_1_m52 = and(Sbox_opt_1_m42, Sbox_opt_1_t15) @[Sbox.scala 510:19]
+    node Sbox_opt_1_m53 = and(Sbox_opt_1_m45, Sbox_opt_1_t27) @[Sbox.scala 511:19]
+    node Sbox_opt_1_m54 = and(Sbox_opt_1_m41, Sbox_opt_1_t10) @[Sbox.scala 512:19]
+    node Sbox_opt_1_m55 = and(Sbox_opt_1_m44, Sbox_opt_1_t13) @[Sbox.scala 513:19]
+    node Sbox_opt_1_m56 = and(Sbox_opt_1_m40, Sbox_opt_1_t23) @[Sbox.scala 514:19]
+    node Sbox_opt_1_m57 = and(Sbox_opt_1_m39, Sbox_opt_1_t19) @[Sbox.scala 515:19]
+    node Sbox_opt_1_m58 = and(Sbox_opt_1_m43, Sbox_opt_1_t3) @[Sbox.scala 516:19]
+    node Sbox_opt_1_m59 = and(Sbox_opt_1_m38, Sbox_opt_1_t22) @[Sbox.scala 517:19]
+    node Sbox_opt_1_m60 = and(Sbox_opt_1_m37, Sbox_opt_1_t20) @[Sbox.scala 518:19]
+    node Sbox_opt_1_m61 = and(Sbox_opt_1_m42, Sbox_opt_1_t1) @[Sbox.scala 519:19]
+    node Sbox_opt_1_m62 = and(Sbox_opt_1_m45, Sbox_opt_1_t4) @[Sbox.scala 520:19]
+    node Sbox_opt_1_m63 = and(Sbox_opt_1_m41, Sbox_opt_1_t2) @[Sbox.scala 521:19]
+    node Sbox_opt_1_l0 = xor(Sbox_opt_1_m61, Sbox_opt_1_m62) @[Sbox.scala 523:18]
+    node Sbox_opt_1_l1 = xor(Sbox_opt_1_m50, Sbox_opt_1_m56) @[Sbox.scala 524:18]
+    node Sbox_opt_1_l2 = xor(Sbox_opt_1_m46, Sbox_opt_1_m48) @[Sbox.scala 525:18]
+    node Sbox_opt_1_l3 = xor(Sbox_opt_1_m47, Sbox_opt_1_m55) @[Sbox.scala 526:18]
+    node Sbox_opt_1_l4 = xor(Sbox_opt_1_m54, Sbox_opt_1_m58) @[Sbox.scala 527:18]
+    node Sbox_opt_1_l5 = xor(Sbox_opt_1_m49, Sbox_opt_1_m61) @[Sbox.scala 528:18]
+    node Sbox_opt_1_l6 = xor(Sbox_opt_1_m62, Sbox_opt_1_l5) @[Sbox.scala 529:18]
+    node Sbox_opt_1_l7 = xor(Sbox_opt_1_m46, Sbox_opt_1_l3) @[Sbox.scala 530:18]
+    node Sbox_opt_1_l8 = xor(Sbox_opt_1_m51, Sbox_opt_1_m59) @[Sbox.scala 531:18]
+    node Sbox_opt_1_l9 = xor(Sbox_opt_1_m52, Sbox_opt_1_m53) @[Sbox.scala 532:18]
+    node Sbox_opt_1_l10 = xor(Sbox_opt_1_m53, Sbox_opt_1_l4) @[Sbox.scala 533:19]
+    node Sbox_opt_1_l11 = xor(Sbox_opt_1_m60, Sbox_opt_1_l2) @[Sbox.scala 534:19]
+    node Sbox_opt_1_l12 = xor(Sbox_opt_1_m48, Sbox_opt_1_m51) @[Sbox.scala 535:19]
+    node Sbox_opt_1_l13 = xor(Sbox_opt_1_m50, Sbox_opt_1_l0) @[Sbox.scala 536:19]
+    node Sbox_opt_1_l14 = xor(Sbox_opt_1_m52, Sbox_opt_1_m61) @[Sbox.scala 537:19]
+    node Sbox_opt_1_l15 = xor(Sbox_opt_1_m55, Sbox_opt_1_l1) @[Sbox.scala 538:19]
+    node Sbox_opt_1_l16 = xor(Sbox_opt_1_m56, Sbox_opt_1_l0) @[Sbox.scala 539:19]
+    node Sbox_opt_1_l17 = xor(Sbox_opt_1_m57, Sbox_opt_1_l1) @[Sbox.scala 540:19]
+    node Sbox_opt_1_l18 = xor(Sbox_opt_1_m58, Sbox_opt_1_l8) @[Sbox.scala 541:19]
+    node Sbox_opt_1_l19 = xor(Sbox_opt_1_m63, Sbox_opt_1_l4) @[Sbox.scala 542:19]
+    node Sbox_opt_1_l20 = xor(Sbox_opt_1_l0, Sbox_opt_1_l1) @[Sbox.scala 543:18]
+    node Sbox_opt_1_l21 = xor(Sbox_opt_1_l1, Sbox_opt_1_l7) @[Sbox.scala 544:18]
+    node Sbox_opt_1_l22 = xor(Sbox_opt_1_l3, Sbox_opt_1_l12) @[Sbox.scala 545:18]
+    node Sbox_opt_1_l23 = xor(Sbox_opt_1_l18, Sbox_opt_1_l2) @[Sbox.scala 546:19]
+    node Sbox_opt_1_l24 = xor(Sbox_opt_1_l15, Sbox_opt_1_l9) @[Sbox.scala 547:19]
+    node Sbox_opt_1_l25 = xor(Sbox_opt_1_l6, Sbox_opt_1_l10) @[Sbox.scala 548:18]
+    node Sbox_opt_1_l26 = xor(Sbox_opt_1_l7, Sbox_opt_1_l9) @[Sbox.scala 549:18]
+    node Sbox_opt_1_l27 = xor(Sbox_opt_1_l8, Sbox_opt_1_l10) @[Sbox.scala 550:18]
+    node Sbox_opt_1_l28 = xor(Sbox_opt_1_l11, Sbox_opt_1_l14) @[Sbox.scala 551:19]
+    node Sbox_opt_1_l29 = xor(Sbox_opt_1_l11, Sbox_opt_1_l17) @[Sbox.scala 552:19]
+    node Sbox_opt_1__T = xor(Sbox_opt_1_l6, Sbox_opt_1_l24) @[Sbox.scala 554:17]
+    node Sbox_opt_1__T_1 = xor(Sbox_opt_1_l16, Sbox_opt_1_l26) @[Sbox.scala 555:20]
+    node Sbox_opt_1__T_2 = not(Sbox_opt_1__T_1) @[Sbox.scala 555:14]
+    node Sbox_opt_1__T_3 = xor(Sbox_opt_1_l19, Sbox_opt_1_l28) @[Sbox.scala 556:20]
+    node Sbox_opt_1__T_4 = not(Sbox_opt_1__T_3) @[Sbox.scala 556:14]
+    node Sbox_opt_1__T_5 = xor(Sbox_opt_1_l6, Sbox_opt_1_l21) @[Sbox.scala 557:17]
+    node Sbox_opt_1__T_6 = xor(Sbox_opt_1_l20, Sbox_opt_1_l22) @[Sbox.scala 558:18]
+    node Sbox_opt_1__T_7 = xor(Sbox_opt_1_l25, Sbox_opt_1_l29) @[Sbox.scala 559:18]
+    node Sbox_opt_1__T_8 = xor(Sbox_opt_1_l13, Sbox_opt_1_l27) @[Sbox.scala 560:20]
+    node Sbox_opt_1__T_9 = not(Sbox_opt_1__T_8) @[Sbox.scala 560:14]
+    node Sbox_opt_1__T_10 = xor(Sbox_opt_1_l6, Sbox_opt_1_l23) @[Sbox.scala 561:19]
+    node Sbox_opt_1__T_11 = not(Sbox_opt_1__T_10) @[Sbox.scala 561:14]
+    Sbox_opt_1_io_o0 <= Sbox_opt_1__T @[Sbox.scala 554:11]
+    Sbox_opt_1_io_o1 <= Sbox_opt_1__T_2 @[Sbox.scala 555:11]
+    Sbox_opt_1_io_o2 <= Sbox_opt_1__T_4 @[Sbox.scala 556:11]
+    Sbox_opt_1_io_o3 <= Sbox_opt_1__T_5 @[Sbox.scala 557:11]
+    Sbox_opt_1_io_o4 <= Sbox_opt_1__T_6 @[Sbox.scala 558:11]
+    Sbox_opt_1_io_o5 <= Sbox_opt_1__T_7 @[Sbox.scala 559:11]
+    Sbox_opt_1_io_o6 <= Sbox_opt_1__T_9 @[Sbox.scala 560:11]
+    Sbox_opt_1_io_o7 <= Sbox_opt_1__T_11 @[Sbox.scala 561:11]
+    io_o0_0 <= Sbox_opt_io_o0 @[Sbox.scala 596:18]
+    io_o0_1 <= Sbox_opt_1_io_o0 @[Sbox.scala 596:18]
+    io_o1_0 <= Sbox_opt_io_o1 @[Sbox.scala 597:18]
+    io_o1_1 <= Sbox_opt_1_io_o1 @[Sbox.scala 597:18]
+    io_o2_0 <= Sbox_opt_io_o2 @[Sbox.scala 598:18]
+    io_o2_1 <= Sbox_opt_1_io_o2 @[Sbox.scala 598:18]
+    io_o3_0 <= Sbox_opt_io_o3 @[Sbox.scala 599:18]
+    io_o3_1 <= Sbox_opt_1_io_o3 @[Sbox.scala 599:18]
+    io_o4_0 <= Sbox_opt_io_o4 @[Sbox.scala 600:18]
+    io_o4_1 <= Sbox_opt_1_io_o4 @[Sbox.scala 600:18]
+    io_o5_0 <= Sbox_opt_io_o5 @[Sbox.scala 601:18]
+    io_o5_1 <= Sbox_opt_1_io_o5 @[Sbox.scala 601:18]
+    io_o6_0 <= Sbox_opt_io_o6 @[Sbox.scala 602:18]
+    io_o6_1 <= Sbox_opt_1_io_o6 @[Sbox.scala 602:18]
+    io_o7_0 <= Sbox_opt_io_o7 @[Sbox.scala 603:18]
+    io_o7_1 <= Sbox_opt_1_io_o7 @[Sbox.scala 603:18]
+    Sbox_opt_clock <= clock
+    Sbox_opt_reset <= reset
+    Sbox_opt_io_i0 <= io_i0_0 @[Sbox.scala 587:20]
+    Sbox_opt_io_i1 <= io_i1_0 @[Sbox.scala 588:20]
+    Sbox_opt_io_i2 <= io_i2_0 @[Sbox.scala 589:20]
+    Sbox_opt_io_i3 <= io_i3_0 @[Sbox.scala 590:20]
+    Sbox_opt_io_i4 <= io_i4_0 @[Sbox.scala 591:20]
+    Sbox_opt_io_i5 <= io_i5_0 @[Sbox.scala 592:20]
+    Sbox_opt_io_i6 <= io_i6_0 @[Sbox.scala 593:20]
+    Sbox_opt_io_i7 <= io_i7_0 @[Sbox.scala 594:20]
+    Sbox_opt_1_clock <= clock
+    Sbox_opt_1_reset <= reset
+    Sbox_opt_1_io_i0 <= io_i0_1 @[Sbox.scala 587:20]
+    Sbox_opt_1_io_i1 <= io_i1_1 @[Sbox.scala 588:20]
+    Sbox_opt_1_io_i2 <= io_i2_1 @[Sbox.scala 589:20]
+    Sbox_opt_1_io_i3 <= io_i3_1 @[Sbox.scala 590:20]
+    Sbox_opt_1_io_i4 <= io_i4_1 @[Sbox.scala 591:20]
+    Sbox_opt_1_io_i5 <= io_i5_1 @[Sbox.scala 592:20]
+    Sbox_opt_1_io_i6 <= io_i6_1 @[Sbox.scala 593:20]
+    Sbox_opt_1_io_i7 <= io_i7_1 @[Sbox.scala 594:20]
