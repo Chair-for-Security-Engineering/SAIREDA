@@ -21,8 +21,12 @@
  *
  * Please see license.rtf and README for license and further instructions.
  */
+
 #ifndef UTIL_H
 #define UTIL_H
+
+#include "mlir/IR/Value.h"
+#include "mlir/IR/Operation.h"
 
 #include<string>
 #include<vector>
@@ -31,6 +35,14 @@
 namespace secutil{
     ///Helperfunction that splits strings at a given delimiter char
     std::vector<std::string> split(const std::string& s, const char *delimiter);
+
+    bool vectorContainsValue(
+            std::vector<mlir::Value> vector, 
+            mlir::Value search);
+    
+    bool vectorContainsOperation(
+            std::vector<mlir::Operation*> vector, 
+            mlir::Operation *search);
 
 }
 #endif // !UTIL_H

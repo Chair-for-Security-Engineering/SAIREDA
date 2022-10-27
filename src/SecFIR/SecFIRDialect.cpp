@@ -144,8 +144,11 @@ SecFIRDialect::SecFIRDialect(MLIRContext *context)
 	// Register types.
   	mlir::Dialect::addTypes<SIntType, UIntType, ClockType, ResetType, AsyncResetType, AnalogType,
            // Derived Types
-           FlipType, BundleType, FVectorType, ShareType, RandomnessType>();
+           FlipType, BundleType, FVectorType, ShareType, DuplicatedShareType, RandomnessType>();
 
+	//Register attributes
+	addAttributes<SecurityLevelAttribute, ValueAttr>();
+	
 	// Register operations.
   	mlir::Dialect::addOperations<
 			#define GET_OP_LIST

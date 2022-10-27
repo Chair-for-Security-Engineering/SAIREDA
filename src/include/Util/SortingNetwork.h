@@ -22,33 +22,30 @@
  * Please see license.rtf and README for license and further instructions.
  */
 
-#ifndef CIRCT_CONVERSION_FIRRTLTOSECFIR_H
-#define CIRCT_CONVERSION_FIRRTLTOSECFIR_H
+#ifndef SORTINGNETWORK_H
+#define SORTINGNETWORK_H
 
-#include "mlir/Pass/Pass.h"
-#include "mlir/Transforms/DialectConversion.h"
-#include "mlir/Transforms/Utils.h"
-#include "mlir/IR/BlockAndValueMapping.h"
+#include<string>
+#include<vector>
+#include <fstream>
 
-#include "circt/Dialect/FIRRTL/Dialect.h"
-#include "circt/Dialect/FIRRTL/Ops.h"
-#include "SecFIR/SecFIRDialect.h"
-#include "SecFIR/Ops.h"
+#include <iostream>
 
-namespace circt {
-	namespace firrtl {
-        struct FIRRTLToSecFIRConversionPass: public mlir::PassWrapper<FIRRTLToSecFIRConversionPass, 
-                mlir::OperationPass<firrtl::CircuitOp>> {
-            void getDependentDialects(mlir::DialectRegistry &registry) const override {
-                registry.insert<firrtl::FIRRTLDialect>();
-            }
-            void runOnOperation() final;
-        };
-        
-        std::unique_ptr<mlir::Pass> createFIRRTLToSecFIRConversionPass();
-        void registerFIRRTLToSecFIRConversionPass();
-    }
-   
+namespace secutil{
+
+
+	class SortingNetwork{
+        size_t num_inputs;
+        std::vector<std::pair<unsigned,unsigned>> network;
+	   
+	public:
+		SortingNetwork(unsigned number_inputs);
+                SortingNetwork(std::string filename);
+
+                void addComparison(unsigned first, unsigned second);
+                unsigned getNumberOfInputs();
+                std::vector<std::pair<unsigned,unsigned>> getNetwork();
+
+	};
 }
-
-#endif //CIRCT_CONVERSION_FIRRTLTOSECFIR_H
+#endif // !SORTINGNETWORK_H

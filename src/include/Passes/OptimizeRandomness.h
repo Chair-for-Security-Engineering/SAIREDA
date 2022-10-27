@@ -21,6 +21,7 @@
  *
  * Please see license.rtf and README for license and further instructions.
  */
+
 #ifndef CIRCT_DIALECT_SECFIR_OPTIMIZERANDOMNESS_H
 #define CIRCT_DIALECT_SECFIR_OPTIMIZERANDOMNESS_H
 
@@ -176,11 +177,13 @@ namespace secfir {
     /// gadgets:        list of gadgets
     /// dependentOps:   mapping from every gadget to a list of gadgets
     ///                     it despends on
+    /// maxSetSize:     maximum number of gadgets in one set
     /// parallelOps:    datastructure that will contain the sets of 
     ///                     parallel gadgets      
     void determineParallelGadgetsFirstFitHeuristic(
         std::vector<mlir::Operation *> &gadgets,
         mlir::DenseMap<mlir::Operation*, std::set<mlir::Operation*>> &dependentOps,
+        unsigned maxSetSize,
         std::vector<std::vector<mlir::Operation*>> &parallelOps
     );
 

@@ -28,6 +28,137 @@ namespace secfir{
 
 using namespace circt;
 
+    /// Recursive function that adds all gadgets to the list of dependent
+    /// gadgets for a specific gadget starting from the provided operation.
+    ///
+    /// dependentOp:    the gadget we are searching dependent gadgats for
+    /// op:             start operation for the recursive tree traversal
+    /// dependentOps:   datastructure that contains for each already determined 
+    ///                     gadgets the list of other gadgets it depends on
+    void addDependentGadgets(
+                mlir::Operation *dependentOp,
+                mlir::Operation *op,
+                mlir::DenseMap<mlir::Operation*, std::vector<mlir::Operation*>> &dependentOps
+    ){
+        bool contained = false;
+        //A PINI gadget adds all gadgets it depends on as well as itself
+        //to the list of dependent gadgets
+        if(secfir::isa<secfir::PiniAndGadgetOp>(op)){
+            secfir::PiniAndGadgetOp pini = secfir::dyn_cast<secfir::PiniAndGadgetOp>(op);
+            //Add all gadget the PINI gadget depends on
+            for(mlir::Operation *gadget: dependentOps[op]){
+                //Check whether the gadget is already in the list
+                contained = false;
+                for(mlir::Operation *op_dep: dependentOps[dependentOp]){
+                    if(gadget == op_dep) {
+                        contained = true;
+                        break;
+                    }
+                }
+                //Add the gadget to the list if it is not already in it
+                if(!contained) dependentOps[dependentOp].push_back(gadget);
+            }
+            //Add the PINI gadget itself
+            dependentOps[dependentOp].push_back(pini);
+            return;
+        //An SNI gadget only adds itself to the list of dependent gadgets
+        }else if(secfir::isa<secfir::SniAndGadgetOp>(op)){
+            secfir::SniAndGadgetOp sni = secfir::dyn_cast<secfir::SniAndGadgetOp>(op);
+            //Check whether the gadget is already in the list
+            contained = false;
+            for(mlir::Operation *op_dep: dependentOps[dependentOp]){
+                if(op == op_dep){
+                     contained = true;
+                     break;
+                }
+            }
+            //Add the gadget to the list if it is not already in it
+            if(!contained) dependentOps[dependentOp].push_back(sni);
+            return;
+        }else if(secfir::isa<secfir::SniRefreshOp>(op)){
+            secfir::SniRefreshOp sni = secfir::dyn_cast<secfir::SniRefreshOp>(op);
+             //Check whether the gadget is already in the list
+            contained = false;
+            for(mlir::Operation *op_dep: dependentOps[dependentOp]){
+                if(op == op_dep){
+                    contained = true;
+                    break;
+                }
+            }
+            //Add the gadget to the list if it is not already in it
+            if(!contained) dependentOps[dependentOp].push_back(sni);
+            return;
+        }else if(secfir::isa<secfir::SniPiniAndGadgetOp>(op)){
+            secfir::SniPiniAndGadgetOp sni = secfir::dyn_cast<secfir::SniPiniAndGadgetOp>(op);
+             //Check whether the gadget is already in the list
+            contained = false;
+            for(mlir::Operation *op_dep: dependentOps[dependentOp]){
+                if(op == op_dep){
+                    contained = true;
+                    break;
+                }
+            }
+            //Add the gadget to the list if it is not already in it
+            if(!contained) dependentOps[dependentOp].push_back(sni);
+            return;
+        //For all other operations dependencies must be determined for all inputs
+        }else{
+            //Go through all inputs if they are the result of an operation
+            for(mlir::Value input: op->getOperands()){
+                if(input.getDefiningOp()){
+                    //Recursive call to add all depending gadgets for this input
+                    addDependentGadgets(dependentOp, input.getDefiningOp(), dependentOps);
+                }
+            }
+            return;
+        }
+    }
+
+    /// Function that determines for the inputs of all multiplication and 
+    /// refresh gadgets (PINI and SNI) on which other gadget outputs they depend.
+    ///
+    /// module:          module that should be analysed
+    /// dependentOps:    datastructure that will contain for each gadgets the 
+    ///                     list of other gadgets it depends on
+    void determineDependentGadgets(
+            secfir::ModuleOp *module,
+            mlir::DenseMap<mlir::Operation*, std::vector<mlir::Operation*>> &dependentOps
+    ){
+        int numOps = module->getBodyBlock()->getOperations().size();
+        int treatedOps = 0;
+        unsigned int progress_step = std::max(10, int(numOps/100));
+        //Go through all operations in the module 
+        for (auto &op : module->getBodyBlock()->getOperations()) {
+            //Only consider PINI and SNI gadgets
+            if(secfir::isa<secfir::PiniAndGadgetOp>(op) ||
+                secfir::isa<secfir::SniAndGadgetOp>(op) ||
+                secfir::isa<secfir::SniRefreshOp>(op)   ||
+                secfir::isa<secfir::SniPiniAndGadgetOp>(op)
+            ){
+                //Add a new set to the list of dependencies
+                std::vector<mlir::Operation*> vector;
+                dependentOps[&op] = vector;
+                //Add the dependent gadgets for all inputs
+                for(mlir::Value input: op.getOperands()){
+                    if(input.getDefiningOp()){
+                        addDependentGadgets(
+                                    &op, 
+                                    input.getDefiningOp(), 
+                                    dependentOps);
+                    }
+                }
+            }   
+            treatedOps++;
+            if(((treatedOps % progress_step) == 0) || treatedOps == int(numOps-1)){
+                float progress = float(treatedOps) / float(numOps-1);
+                if(progress != 1.0){
+                    llvm::errs() << "[ " << int(progress * 100.0) << " %]\b\b\b\b\b\b";
+                    if(progress >= 0.1) llvm::errs() << "\b";
+                }
+            }
+        }   
+    }
+
     /// Function that determines the list of values and gadgets a specifc value depend on.
     /// Does currently only work with designs where all inputs to an operation are already
     /// defined.
@@ -143,6 +274,81 @@ using namespace circt;
         }   
     }
 
+
+    /// Function that determines the list of values a specifc value depend on.
+    ///
+    /// operations:         the list of operations the analysis will be done for
+    /// dependentValues:    datastructure that will contain the mapping from values
+    ///                         to the list of values it depends on
+    void determineDependentValues(
+        mlir::Block::OpListType &operations,
+        mlir::DenseMap<mlir::Value, std::vector<mlir::Value>> &dependentValues
+    ){
+        bool contained = false;
+        int treatedOps = 0;
+        unsigned int progress_step = std::max(10, int(operations.size()/100));
+        //Go through all operations
+        for(mlir::Operation &op: operations){
+            //Ensure that the operation has a result, which is the value we analyse
+            if(op.getResults().size() == 1){
+                //Get the result
+                mlir::Value res = op.getResults()[0];
+                //Add an empty vector to the mapping for this value
+                std::vector<mlir::Value> vector;
+                dependentValues[res] = vector;
+                //Add the value itself to the list of values it depends on
+                dependentValues[res].push_back(res);
+                //If the defining operation is an SNI gadget there are no
+                //more values it depends on otherwise add all values that 
+                //the inputs of the operation depend on to the list
+                if(!(secfir::isa<secfir::SniAndGadgetOp>(op) ||
+                        secfir::isa<secfir::SniPiniAndGadgetOp>(op) ||
+                        secfir::isa<secfir::SniRefreshOp>(op))){
+                    //Go through all inputs of the operation
+                    for(mlir::Value input: op.getOperands()){
+                        //Check whether the input as a list of values it depends on
+                        //and if yes then add all values to the list otherwise add only
+                        //the input to the list
+                        if(dependentValues.count(input) == 1){
+                            //Go through all values the input depends on
+                            for(mlir::Value v_input: dependentValues[input]){
+                                //Check whether this value is already in the list 
+                                contained = false;
+                                for(mlir::Value v_value: dependentValues[res]){
+                                    if(v_value == v_input){
+                                        contained = true;
+                                        break;
+                                    }
+                                }
+                                //If not then add the value to the list
+                                if(!contained) dependentValues[res].push_back(v_input);
+                            }
+                        }else{
+                            //Check whether the input is already in the list
+                            contained = false;
+                            for(mlir::Value v_value: dependentValues[res]){
+                                if(v_value == input){
+                                    contained = true;
+                                    break;
+                                }
+                            }
+                            //If not than add the input to the list
+                            if(!contained) dependentValues[res].push_back(input);
+                        }                  
+                    }
+                }
+            }
+            treatedOps++;
+            if(((treatedOps % progress_step) == 0) || treatedOps == int(operations.size()-1)){
+                float progress = float(treatedOps) / float(operations.size()-1);
+                if(progress != 1.0){
+                    llvm::errs() << "[ " << int(progress * 100.0) << " %]\b\b\b\b\b\b";
+                    if(progress >= 0.1) llvm::errs() << "\b";
+                }
+            }
+        }
+    }
+
     /// Function that determines sets of parallel gadgets 
     /// (inputs is independent of any outputs) using a simple 
     /// heuristic: A gadget is always put in the first set it fits in.
@@ -150,11 +356,13 @@ using namespace circt;
     /// gadgets:        list of gadgets
     /// dependentOps:   mapping from every gadget to a list of gadgets
     ///                     it despends on
+    /// maxSetSize:     maximum size of sets that will be created
     /// parallelOps:    datastructure that will contain the sets of 
     ///                     parallel gadgets      
     void determineParallelGadgetsFirstFitHeuristic(
         std::vector<mlir::Operation *> &gadgets,
         mlir::DenseMap<mlir::Operation*, std::set<mlir::Operation*>> &dependentOps,
+        unsigned maxSetSize,
         std::vector<std::vector<mlir::Operation*>> &parallelOps
     ){
         unsigned treatedGadgets = 0;
@@ -165,11 +373,17 @@ using namespace circt;
             //Go through all available sets
             for(unsigned setIndex=0; setIndex<parallelOps.size(); setIndex++){
                 bool found = false;
-                //Check whether there is one element in this set that is also in
-                //the set of dependent gadgets for the gadget that we want to place
-                for(mlir::Operation *element_set : parallelOps[setIndex]){
-                    if(dependentOps[gadget].find(element_set) != dependentOps[gadget].end()){
-                        found = true;
+                //Do nothing if the current set has already the maximum set size
+                if(maxSetSize != 0 && parallelOps[setIndex].size() == maxSetSize){
+                    found = true;
+                }else{
+                    //Check whether there is one element in this set that is also in
+                    //the set of dependent gadgets for the gadget that we want to place
+                    for(mlir::Operation *element_set : parallelOps[setIndex]){
+                        if(dependentOps[gadget].find(element_set) != dependentOps[gadget].end()){
+                            found = true;
+                            break;
+                        }
                     }
                 }
                 //If no element contradicts the placement of the gadget in this set
@@ -397,7 +611,7 @@ using namespace circt;
             }
             //Print progress notification
             treatedGadgets++;
-            if(((treatedGadgets % progress_step) == 0) || treatedGadgets == unsigned(operations.size()-1)){
+            if(((treatedGadgets % progress_step) == 0) || treatedGadgets == int(operations.size()-1)){
                 float progress = float(treatedGadgets) / float(operations.size()-1);
                 if(progress != 1.0){
                     llvm::errs() << "[ " << int(progress * 100.0) << " %]\b\b\b\b\b\b";
@@ -405,6 +619,90 @@ using namespace circt;
                 }
             }
         }
+    }
+
+    /// Function that extends the set of gadgets one gadget depends on by all
+    /// gadgets where the output is combined at some point in the module. This
+    /// is necessary for a cluster of parallel gadgets where all randomness 
+    /// should potentially be reused.
+    ///
+    /// operations          List of operations in module
+    /// gadgets:            List of gadgets
+    /// dependentOps:       Mapping from a gadget to a list of gadgets on which the gadget
+    ///                         depends. This list will be extendet.
+    /// dependentValues:    Mapping from values to values that value depends on. 
+    void addCombinedOutputGadgets(
+        //mlir::Block::OpListType &operations,
+        std::vector<mlir::Operation*> gadgets,
+        mlir::DenseMap<mlir::Operation*, std::vector<mlir::Operation*>> &dependentOps,
+        mlir::DenseMap<mlir::Value, std::vector<mlir::Value>> &dependentValues
+    ){
+        //Preperation for progress bar
+        unsigned int progress_step = std::max(10, int(gadgets.size()/100));
+        int treatedGadgets = 0;
+        //Go through all gadgets
+        for(mlir::Operation *gadget: gadgets){
+            //Determin gadgets with crossing path for this gadget
+            addCombinedOutputForGadget(gadget, gadget, dependentOps, dependentValues); 
+
+            //Print progress
+            treatedGadgets++;
+            if(((treatedGadgets % progress_step) == 0) || treatedGadgets == int(gadgets.size()-1)){
+                float progress = float(treatedGadgets) / float(gadgets.size()-1);
+                if(progress != 1.0){
+                    llvm::errs() << "[ " << int(progress * 100.0) << " %]\b\b\b\b\b\b";
+                    if(progress >= 0.1) llvm::errs() << "\b";
+                }
+            }
+        }
+
+
+        ///------- Old implementation--------------------------------------------
+        // //Go through all pairs of gadgets
+        // for(unsigned i=0; i<gadgets.size(); i++){
+        //     for(unsigned j=i+1; j<gadgets.size(); j++){
+        //         //Check for all values in the module, whether it depends on both
+        //         //outputs of the two gadgets
+        //         for(mlir::Operation &op: operations){
+        //             //Ensure that the operation has a result, which is the value we analyse
+        //             if(op.getResults().size() == 1){
+        //                 //Get the current value
+        //                 mlir::Value res = op.getResults()[0];
+        //                 //Check whether both gadget outputs are in the list
+        //                 //of values this value depend on
+        //                 bool i_in = false;
+        //                 bool j_in = false;
+        //                 for(mlir::Value depValue: dependentValues[res]){
+        //                     if(gadgets[i]->getResults()[0] == depValue){
+        //                         i_in = true;
+        //                     }else if(gadgets[j]->getResults()[0] == depValue){
+        //                         j_in = true;
+        //                     }
+        //                 }
+        //                 //If both outputs are combined in this operation, add them
+        //                 //to the list of each other
+        //                 if(i_in && j_in){
+        //                     //Check whether the gadget j is already in the list of i
+        //                     bool contained = false;
+        //                     for(mlir::Operation *op_dep: dependentOps[gadgets[i]]){
+        //                         if(gadgets[j] == op_dep) contained = true;
+        //                     }
+        //                     //Add the j to the list if it is not already in it
+        //                     if(!contained) dependentOps[gadgets[i]].push_back(gadgets[j]);
+
+        //                     //Check whether gadget i is already in the list of j
+        //                     contained = false;
+        //                     for(mlir::Operation *op_dep: dependentOps[gadgets[j]]){
+        //                         if(gadgets[i] == op_dep) contained = true;
+        //                     }
+        //                     //Add the i to the list if it is not already in it
+        //                     if(!contained) dependentOps[gadgets[j]].push_back(gadgets[i]);
+        //                 }
+
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 }

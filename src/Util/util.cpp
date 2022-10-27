@@ -1,26 +1,3 @@
-/*
- * -----------------------------------------------------------------
- * COMPANY : Ruhr-University Bochum, Chair for Security Engineering
- * AUTHOR  : Jakob Feldtkeller (jakob.feldtkeller@rub.de)
- * -----------------------------------------------------------------
- *
- * Copyright (c) 2022, Jakob Feldtkeller
- *
- * All rights reserved.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTERS BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
- * Please see license.rtf and README for license and further instructions.
- */
 #include "Util/util.h"
 
 ///Helperfunction that splits strings at a given delimiter char
@@ -32,4 +9,36 @@ std::vector<std::string> secutil::split(const std::string& s, const char *delimi
         tokens.push_back(token);
     }
     return tokens;
+}
+
+bool secutil::vectorContainsValue(
+            std::vector<mlir::Value> vector, 
+            mlir::Value search
+){
+    for(mlir::Value val : vector){
+        if(val == search)
+            return true;
+    }
+    return false;
+}
+
+bool secutil::vectorContainsOperation(
+            std::vector<mlir::Operation*> vector, 
+            mlir::Operation *search
+){
+    for(mlir::Operation* op : vector){
+        if(op == NULL) continue;
+        //Check for same name
+        if(op->getName() == search->getName()){
+            //Check for same result
+            if(op->getResult(0) == search->getResult(0)){
+                //Check for same openands
+                for(unsigned i=0; i<op->getOperands().size(); i++){
+                    if(op->getOperand(i) == search->getOperand(i))
+                        return true;
+                }
+            }
+        }
+    }
+    return false;
 }

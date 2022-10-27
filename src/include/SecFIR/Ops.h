@@ -50,8 +50,15 @@
 namespace circt {
 namespace secfir {
 
+  /// Return true if the specified operation is a secfir expression.
+  // bool isExpression(mlir::Operation *op);
+
+  // Binary primitives.
   SecFIRType getBitwiseBinaryResult(SecFIRType lhs, SecFIRType rhs);
+
+  // Unary primitives.
   SecFIRType getNotResult(SecFIRType input);
+
   // Side-Channel Ops
   SecFIRType getRefreshResult(SecFIRType input);
 
@@ -78,6 +85,7 @@ namespace secfir {
   /// This function can extract information about ports from a module and an
   /// extmodule.
   void getModulePortInfo(mlir::Operation *op, llvm::SmallVectorImpl<ModulePortInfo> &results);
+  void getModuleOutputPortInfo(mlir::Operation *op, llvm::SmallVectorImpl<ModulePortInfo> &results);
 
 } // namespace firrtl
 } // namespace circt

@@ -34,6 +34,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "SecFIR/Ops.h"
+// #include "SecFIR/Visitors.h"
 
 #include "mlir/IR/Diagnostics.h"
 #include "mlir/IR/DialectImplementation.h"
@@ -255,6 +256,113 @@ void secfir::getModulePortInfo(Operation *op,
   }
 }
 
+void secfir::getModuleOutputPortInfo(Operation *op,
+                               SmallVectorImpl<ModulePortInfo> &results) {
+  //Get names and types of output ports
+  mlir::ArrayAttr resultNames = op->getAttrOfType<mlir::ArrayAttr>("resultNames");
+  auto argTypes = getModuleType(op).getResults();
+
+  for (unsigned i = 0, e = argTypes.size(); i < e; ++i) {
+    auto name = resultNames[i];
+    auto type = argTypes[i].dyn_cast<SecFIRType>();
+
+    // Convert IntegerType ports to IntType ports transparently.
+    if (!type) {
+      auto intType = argTypes[i].cast<IntegerType>();
+      type = IntType::get(op->getContext(), intType.isSigned(),
+                          intType.getWidth());
+    }
+    
+    results.push_back({name.dyn_cast<StringAttr>(), type});
+  }
+}
+
+//===----------------------------------------------------------------------===//
+// Declarations
+//===----------------------------------------------------------------------===//
+
+/// Lookup the module or extmodule for the symbol.  This returns null on
+/// invalid IR.
+Operation *InstanceOp::getReferencedModule() {
+  auto circuit = getParentOfType<CircuitOp>();
+  if (circuit)
+    return nullptr;
+
+  return circuit.lookupSymbol(moduleName());
+}
+
+/// Intercept the `attr-dict` printing to determine whether or not we can elide
+/// the result names attribute.
+void printResultNameList(OpAsmPrinter &p, InstanceOp op,
+                      const MutableDictionaryAttr &) {
+  SmallVector<StringRef, 8> elideFields = {"instanceName", "moduleName"};
+
+  // If any names don't match what the printer is going to emit, keep the
+  // attributes.
+  bool nameDisagreement = false;
+  ArrayAttr nameAttrList = op.getAttrOfType<ArrayAttr>("name");
+  // Look for result names to possibly elide.
+  if (nameAttrList && nameAttrList.size() <= op.getNumResults()) {
+    // Check that all the result names have been kept.
+    for (size_t i = 0, e = nameAttrList.size(); i < e; ++i) {
+      // Name must be a string.
+      if (auto expectedName = nameAttrList[i].dyn_cast<StringAttr>()) {
+        // Check for disagreement
+        SmallString<32> resultNameStr;
+        llvm::raw_svector_ostream tmpStream(resultNameStr);
+        p.printOperand(op.getResult(i), tmpStream);
+        if (tmpStream.str().drop_front() != expectedName.getValue()) {
+          nameDisagreement = true;
+        }
+      }
+    }
+  }
+  if (!nameDisagreement)
+    elideFields.push_back("name");
+
+  p.printOptionalAttrDict(op.getAttrs(), elideFields);
+}
+
+/// Intercept the `attr-dict` parsing to inject the result names which _may_ be
+/// missing.
+ParseResult parseResultNameList(OpAsmParser &p, NamedAttrList &attrDict) {
+  MLIRContext *ctxt = p.getBuilder().getContext();
+  if (p.parseOptionalAttrDict(attrDict))
+    return failure();
+
+  // Assemble the result names from the asm.
+  SmallVector<Attribute, 8> names;
+  for (size_t i = 0, e = p.getNumResults(); i < e; ++i) {
+    names.push_back(StringAttr::get(p.getResultName(i).first, ctxt));
+  }
+
+  // Look for existing result names in the attr-dict and if they exist and are
+  // non-empty, replace them in the 'names' vector.
+  auto resultNamesID = Identifier::get("name", ctxt);
+  if (auto namesAttr = attrDict.getNamed(resultNamesID)) {
+    // It must be an ArrayAttr.
+    if (auto nameAttrList = namesAttr->second.dyn_cast<ArrayAttr>()) {
+      for (size_t i = 0, e = nameAttrList.size(); i < e; ++i) {
+        // List of result names must be no longer than number of results.
+        if (i >= names.size())
+          break;
+        // And it must be a string.
+        if (auto resultNameStringAttr =
+                nameAttrList[i].dyn_cast<StringAttr>()) {
+          // Only replace if non-empty.
+          if (!resultNameStringAttr.getValue().empty())
+            names[i] = resultNameStringAttr;
+        }
+      }
+    }
+  }
+  attrDict.set("name", ArrayAttr::get(names, ctxt));
+  return success();
+}
+
+//===----------------------------------------------------------------------===//
+// Expressions
+//===----------------------------------------------------------------------===//
 static LogicalResult verifyConstantOp(ConstantOp constant) {
   // If the result type has a bitwidth, then the attribute must match its width.
   auto intType = constant.getType().cast<IntType>();
@@ -305,11 +413,6 @@ static bool isSameIntegerType(SecFIRType lhs, SecFIRType rhs,
   return true;
 }
 
-
-// //===----------------------------------------------------------------------===//
-// // Unary Primitives
-// //===----------------------------------------------------------------------===//
-
 SecFIRType secfir::getNotResult(SecFIRType input) {
   auto inputi = input.dyn_cast<IntType>();
   if (!inputi)
@@ -327,8 +430,59 @@ SecFIRType secfir::getRefreshResult(SecFIRType input) {
   return UIntType::get(input.getContext(), inputi.getWidthOrSentinel());
 }
 
-//-------------------------------------------------------------------------------
+//===----------------------------------------------------------------------===//
 // Other Operations
+//===----------------------------------------------------------------------===//
+
+SecFIRType MuxPrimOp::getResultType(SecFIRType sel, SecFIRType high,
+                                    SecFIRType low, Location loc) {
+  // Sel needs to be a one bit uint or an unknown width uint.
+  auto selui = sel.dyn_cast<UIntType>();
+  if (!selui || selui.getWidthOrSentinel() > 1)
+    return {};
+
+  // FIXME: This should be defined in terms of a more general type equivalence
+  // operator.  We actually need a 'meet' operator of some sort.
+  if (high == low)
+    return low;
+
+  // The base types need to be equivalent.
+  if (high.getTypeID() != low.getTypeID())
+    return {};
+  if (low.isa<ClockType>() || low.isa<ResetType>() || low.isa<AsyncResetType>())
+    return low;
+
+  // Two different UInt types can be compatible.  If either has unknown width,
+  // then return it.  If both are known but different width, then return the
+  // larger one.
+  if (auto lowui = low.dyn_cast<UIntType>()) {
+    if (!lowui.getWidth().hasValue())
+      return lowui;
+    auto highui = high.cast<UIntType>();
+    if (!highui.getWidth().hasValue())
+      return highui;
+    if (lowui.getWidth().getValue() > highui.getWidth().getValue())
+      return low;
+    return high;
+  }
+
+  if (auto lowsi = low.dyn_cast<SIntType>()) {
+    if (!lowsi.getWidth().hasValue())
+      return lowsi;
+    auto highsi = high.cast<SIntType>();
+    if (!highsi.getWidth().hasValue())
+      return highsi;
+    if (lowsi.getWidth().getValue() > highsi.getWidth().getValue())
+      return low;
+    return high;
+  }
+
+  // FIXME: Should handle bundles and other things.
+  return {};
+}
+
+//-------------------------------------------------------------------------------
+// Own implemenation
 //-------------------------------------------------------------------------------
 
 void CombLogicOp::build(
@@ -353,6 +507,7 @@ void CombLogicOp::build(
    for (auto elt : operands)
      body->addArgument(elt.getType());
 
+  //CombLogicOp::ensureTerminator(*bodyRegion, builder, odsState.location);
 }
 //===----------------------------------------------------------------------===//
 // TblGen Generated Logic.

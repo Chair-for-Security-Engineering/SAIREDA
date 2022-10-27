@@ -40,8 +40,8 @@ using namespace circt;
         mlir::OpBuilder builder(&getContext());
         //Get current module operation
         secfir::CircuitOp circuit = getOperation();
-        if(parameterOrder == 1){
-            circuit.emitError() << "'distribute-randomness' pass is only possible for order > 1";
+        if(parameterOrder == 1 && parameterDistributionRule != DistributionRule::std_rule){
+            circuit.emitError() << "'distribute-randomness' pass only supports std rule for order=1!";
             signalPassFailure();
             return;
         }
@@ -60,7 +60,9 @@ using namespace circt;
                      if(secfir::isa<secfir::PiniAndGadgetOp>(op) ||
                         secfir::isa<secfir::SniAndGadgetOp>(op) ||
                         secfir::isa<secfir::SniRefreshOp>(op)   ||
-                        secfir::isa<secfir::SniPiniAndGadgetOp>(op)
+                        secfir::isa<secfir::SniPiniAndGadgetOp>(op) ||
+                        secfir::isa<secfir::CiniAndGadgetOp>(op) ||
+                        secfir::isa<secfir::IciniAndGadgetOp>(op)
                     ){
                         gadgets.push_back(&op);
                         gadgetsStatistic++;
@@ -71,17 +73,72 @@ using namespace circt;
                 maxSetSizeStatistic = 0;
                 //Compute the randomness requirements for one gadget
                 unsigned randomnessPerGate = floor(parameterOrder*(parameterOrder+1)/2);
+                unsigned hpc2cRandomnessPerGate = randomnessPerGate;
+                unsigned hpc1cRandomnessPerGate = 2*randomnessPerGate;
+                unsigned iciniRandomnessPerGate = 2*parameterActiveOrder*randomnessPerGate;
                 randomnessPerGadgetStatistic = randomnessPerGate;
                 //Handle standard distribution
                 if(parameterDistributionRule == DistributionRule::std_rule){
                     unsigned usedRandomness = 0;
                     for(unsigned gadgetIndex=0; gadgetIndex<gadgets.size(); gadgetIndex++){
                         std::vector<mlir::Attribute> randVec;
-                        //If some randomness should be unique to the gadget, set those first
-                        for(unsigned randomness=0; randomness<randomnessPerGate; randomness++){
-                            randVec.push_back(builder.getI16IntegerAttr(usedRandomness));
-                            usedRandomness++;
+                        //CINI and ICINI gadgets have a different randomness requirement,
+                        //handle them first
+                        if(secfir::isa<secfir::CiniAndGadgetOp>(gadgets[gadgetIndex])){
+                            StringAttr gadgetType = gadgets[gadgetIndex]->getAttrOfType<StringAttr>("GadgetType");
+                            if(gadgetType.getValue() == "HPC_1"){
+                                //Set the statistic of randomness per gadget for designs using CINI
+                                randomnessPerGadgetStatistic = hpc1cRandomnessPerGate;
+                                //Add randomness indices for ICINI gadgets
+                                for(unsigned randomness=0; randomness<hpc1cRandomnessPerGate; randomness++){
+                                    randVec.push_back(builder.getI16IntegerAttr(usedRandomness));
+                                    usedRandomness++;
+                                }
+                            }else if(gadgetType.getValue() == "HPC_2"){
+                                assert((parameterOrder <= 2 && parameterActiveOrder <= 2) && "HPC_2^C is insecure for the selected configuration!");
+                                //Set the statistic of randomness per gadget for designs using CINI
+                                randomnessPerGadgetStatistic = hpc2cRandomnessPerGate;
+                                //Add randomness indices for ICINI gadgets
+                                for(unsigned randomness=0; randomness<hpc2cRandomnessPerGate; randomness++){
+                                    randVec.push_back(builder.getI16IntegerAttr(usedRandomness));
+                                    usedRandomness++;
+                                }
+                            }
+                        }else if(secfir::isa<secfir::IciniAndGadgetOp>(gadgets[gadgetIndex])){
+                            //Set the statistic of randomness per gadget for designs using ICINI
+                            randomnessPerGadgetStatistic = iciniRandomnessPerGate;
+                            //Add randomness indices for ICINI gadgets
+                            for(unsigned randomness=0; randomness<iciniRandomnessPerGate; randomness++){
+                                randVec.push_back(builder.getI16IntegerAttr(usedRandomness));
+                                usedRandomness++;
+                            }
+                        }else if(secfir::isa<secfir::PiniAndGadgetOp>(gadgets[gadgetIndex])){
+                            StringAttr gadgetType = gadgets[gadgetIndex]->getAttrOfType<StringAttr>("GadgetType");
+                            if(gadgetType.getValue() == "HPC_1"){
+                                //Set the statistic of randomness per gadget for designs using HPC1
+                                randomnessPerGadgetStatistic = 2*randomnessPerGate;
+                                //Add randomness indices for HPC1 gadgets
+                                for(unsigned randomness=0; randomness<2*randomnessPerGate; randomness++){
+                                    randVec.push_back(builder.getI16IntegerAttr(usedRandomness));
+                                    usedRandomness++;
+                                }
+                            }else if(gadgetType.getValue() == "HPC_2"){
+                                //Set the statistic of randomness per gadget for designs using HPC2
+                                randomnessPerGadgetStatistic = randomnessPerGate;
+                                //Add randomness indices for HPC2 gadgets
+                                for(unsigned randomness=0; randomness<randomnessPerGate; randomness++){
+                                    randVec.push_back(builder.getI16IntegerAttr(usedRandomness));
+                                    usedRandomness++;
+                                }
+                            }
+                        }else{
+                            //Handle all gadgets that are not ICINI
+                            for(unsigned randomness=0; randomness<randomnessPerGate; randomness++){
+                                randVec.push_back(builder.getI16IntegerAttr(usedRandomness));
+                                usedRandomness++;
+                            }
                         }
+                       
                         mlir::ArrayRef<mlir::Attribute> arrayRef(randVec);
                         mlir::ArrayAttr randArrayAttr = builder.getArrayAttr(arrayRef);
                         gadgets[gadgetIndex]->setAttr("RandIndices", randArrayAttr);
@@ -122,7 +179,11 @@ using namespace circt;
                 llvm::errs() << "Determining clusters of gadgets... ";
                 //Divide gadgets into sets of parallel gadgets (with an heuristic algorithm)
                 std::vector<std::vector<mlir::Operation*>> parallelOps;  
-                determineParallelGadgetsFirstFitHeuristic(gadgets, dependentGadgets, parallelOps); 
+                determineParallelGadgetsFirstFitHeuristic(
+                            gadgets, 
+                            dependentGadgets, 
+                            parameterMaxSetSize, 
+                            parallelOps); 
                 llvm::errs() << "\r" << std::string(70, ' ') << "\r";
                 //Determin minimum and maximum set size
                 for(auto opSet: parallelOps){
@@ -192,6 +253,7 @@ using namespace circt;
                 savedRandomnessStatistic += 
                         randomnessPerGate*gadgetsStatistic - randomnessStatistic; 
                 meanSetSizeStatistic = ((double)gadgets.size() / (double)parallelOps.size()) * 100; 
+                numSetStatistic += numSetStatistic + parallelOps.size();
             }
             //Add the number of required randomness as attribute to the module
             mlir::IntegerAttr reqRandomness = builder.getI16IntegerAttr(randomnessStatistic);

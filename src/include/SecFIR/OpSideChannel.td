@@ -59,10 +59,13 @@ class BinaryGadgetOp<string mnemonic, string resultTypeFunction,
   }])));
 }
 
+def SCAGadget : NativeOpTrait<"SCAGadget">;
 
-def PiniAndGadgetOp : BinaryGadgetOp<"pini_and", "getBitwiseBinaryResult", [Commutative]>;
-def SniAndGadgetOp : BinaryGadgetOp<"sni_and", "getBitwiseBinaryResult", [Commutative]>;
-def SniPiniAndGadgetOp : BinaryGadgetOp<"sni_pini_and", "getBitwiseBinaryResult", [Commutative]>;
+def PiniAndGadgetOp : BinaryGadgetOp<"pini_and", "getBitwiseBinaryResult", [Commutative, SCAGadget]>;
+def SniAndGadgetOp : BinaryGadgetOp<"sni_and", "getBitwiseBinaryResult", [Commutative, SCAGadget]>;
+def SniPiniAndGadgetOp : BinaryGadgetOp<"sni_pini_and", "getBitwiseBinaryResult", [Commutative, SCAGadget]>;
+def CiniAndGadgetOp : BinaryGadgetOp<"cini_and", "getBitwiseBinaryResult", [Commutative, SCAGadget]>;
+def IciniAndGadgetOp : BinaryGadgetOp<"icini_and", "getBitwiseBinaryResult", [Commutative, SCAGadget]>;
 
 //===----------------------------------------------------------------------===//
 // Unary Operations
@@ -95,4 +98,4 @@ class UnaryGadgetOp<string mnemonic, string resultTypeFunction,
   }])));
 }
 
-def SniRefreshOp : UnaryPrimOp<"sni_ref", "getRefreshResult", IntType, IntType>;
+def SniRefreshOp : UnaryPrimOp<"sni_ref", "getRefreshResult", IntType, IntType, [SCAGadget]>;

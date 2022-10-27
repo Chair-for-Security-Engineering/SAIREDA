@@ -137,3 +137,41 @@ OpFoldResult XorPrimOp::fold(ArrayRef<Attribute> operands) {
   return constFoldBinaryOp<IntegerAttr>(operands,
                                         [](APInt a, APInt b) { return a ^ b; });
 }
+
+
+OpFoldResult MuxPrimOp::fold(ArrayRef<Attribute> operands) {
+  APInt value;
+
+  /// mux(0/1, x, y) -> x or y
+  if (matchPattern(sel(), m_FConstant(value))) {
+    if (value.isNullValue() && low().getType() == getType())
+      return low();
+    if (!value.isNullValue() && high().getType() == getType())
+      return high();
+  }
+
+  // mux(cond, x, x) -> x
+  if (high() == low())
+    return high();
+
+  // mux(cond, x, cst)
+  if (matchPattern(low(), m_FConstant(value))) {
+    APInt c1;
+    // mux(cond, c1, c2)
+    if (matchPattern(high(), m_FConstant(c1))) {
+      // mux(cond, 1, 0) -> cond
+      if (c1.isOneValue() && value.isNullValue() &&
+          getType() == sel().getType())
+        return sel();
+
+      // TODO: x ? ~0 : 0 -> sext(x)
+      // TODO: "x ? c1 : c2" -> many tricks
+    }
+    // TODO: "x ? a : 0" -> sext(x) & a
+  }
+
+  // TODO: "x ? c1 : y" -> "~x ? y : c1"
+
+  return {};
+}
+

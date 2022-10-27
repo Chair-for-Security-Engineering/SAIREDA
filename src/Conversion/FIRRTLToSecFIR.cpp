@@ -21,6 +21,7 @@
  *
  * Please see license.rtf and README for license and further instructions.
  */
+
 #include "Conversion/FIRRTLToSecFIR.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 
@@ -327,6 +328,42 @@ struct FIRRTLXorPrimOpConversion : public mlir::OpConversionPattern<firrtl::XorP
     }
 };
 
+/// Conversation pattern from FIRRTL MUX operation to SecFIR MUX operation.
+/// This is a one-to-one replacement conversation.
+struct FIRRTLMuxPrimOpConversion : public mlir::OpConversionPattern<firrtl::MuxPrimOp> {
+    using mlir::OpConversionPattern<firrtl::MuxPrimOp>::OpConversionPattern;
+
+    /// Translates firrtl.MuxPrimOp to secfir.MuxPrimOp
+    mlir::LogicalResult matchAndRewrite(
+            firrtl::MuxPrimOp firrtlMuxOp, 
+            mlir::ArrayRef<mlir::Value> operands, 
+            mlir::ConversionPatternRewriter &rewriter
+    ) const final {
+        firrtl::FIRRTLToSecFIRTypeConverter converter;
+        //Get operands
+        mlir::Value sel = operands[0];
+        mlir::Value lhs = operands[1];
+        mlir::Value rhs = operands[2];
+
+        //Convert operand types if not already a secfir type
+        if(!converter.isSecFIRType(sel.getType())){
+            sel.setType(converter.convertType(sel.getType()));
+        }
+        if(!converter.isSecFIRType(lhs.getType())){
+            lhs.setType(converter.convertType(lhs.getType()));
+        }
+        if(!converter.isSecFIRType(rhs.getType())){
+            rhs.setType(converter.convertType(rhs.getType()));
+        }
+        //lhs.setType(converter.convertType(lhs.getType()));
+        //Replace old firrtl operation with new secfir operation
+        rewriter.replaceOpWithNewOp<secfir::MuxPrimOp>(firrtlMuxOp, 
+                converter.convertType(firrtlMuxOp.getType()), sel, lhs, rhs);
+        return mlir::success();
+    }
+};
+
+
 ///--Unary Expression Operations-----------------------------------------------
 
 /// Conversation pattern from FIRRTL NOT operation to SecFIR NOT operation.
@@ -546,6 +583,7 @@ void firrtl::FIRRTLToSecFIRConversionPass::runOnOperation() {
                     FIRRTLFModuleOpConversion,
                     FIRRTLOrPrimOpConversion,
                     FIRRTLXorPrimOpConversion,
+                    FIRRTLMuxPrimOpConversion,
                     FIRRTLAndPrimOpConversion, 
                     FIRRTLNotPrimOpConversion,
                     FIRRTLConstantOpConversion,

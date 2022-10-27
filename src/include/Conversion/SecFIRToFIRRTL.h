@@ -21,6 +21,7 @@
  *
  * Please see license.rtf and README for license and further instructions.
  */
+
 #ifndef CIRCT_CONVERSION_SECFIRTOFIRRTL_H
 #define CIRCT_CONVERSION_SECFIRTOFIRRTL_H
 

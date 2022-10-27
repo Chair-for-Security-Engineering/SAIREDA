@@ -23,15 +23,16 @@
 cmake_minimum_required (VERSION 3.8)
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ standard to conform to")
 
-project ("secfir_eda")
+project ("secFIR")
 
 include(CTest)
 enable_testing()
 
 # Set Path to CIRCT root directory and directory with Z3 library
+# Must be absolute path (without ~ for home directory)
 # CHANGE HERE!!!
-set(CIRCT_PATH "[CIRCT_ROOT]")
-set(Z3_PATH "[Z3_DIRECTORY]")
+set(CIRCT_PATH "[PATH_CIRCT]")
+set(Z3_PATH "[PATH_Z3]")
 
 #Find LLVM 
 find_package(LLVM 12.0.0 REQUIRED CONFIG)
@@ -64,6 +65,8 @@ include(HandleLLVMOptions)
 
 #Include system libraries
 include_directories(/usr/include)
+#Include z3 headers
+include_directories(${Z3_PATH}/include)
 
 #Include directories from project
 add_subdirectory(src/)
@@ -90,35 +93,45 @@ include_directories(build/)
 add_compile_options(-fno-rtti)
 
 #Define source code and executable that should be created
-add_executable (secfir_eda
+add_executable (saireda
     "main.cpp" 
     "src/SecFIR/SecFIRDialect.cpp" 
     "src/SecFIR/Types.cpp" 
     "src/SecFIR/Ops.cpp" 
     "src/SecFIR/OpsFolds.cpp" 
+    "src/SecFIR/Util.cpp" 
     "src/Conversion/FIRRTLToSecFIR.cpp" 
     "src/Conversion/SecFIRToFIRRTL.cpp" 
     "src/SecFIR/LowerToNetFIR.cpp" 
-    "src/Transforms/IRTransformations.cpp"
-    "src/Transforms/Optimization.cpp"
-    "src/Transforms/XAG.cpp"
+    "src/Transforms/Optimization/Pass.cpp"
+    "src/Transforms/IRTransformation/Pass.cpp"
+    "src/Transforms/IRTransformation/XAG.cpp"
+    "src/Transforms/IRTransformation/Majority.cpp"
+    "src/Transforms/IRTransformation/OperationModules.cpp"
+    "src/Transforms/IRTransformation/MuxToDLogic.cpp"
+    "src/Transforms/IRTransformation/PipeliningPass.cpp"
+    "src/Transforms/IRTransformation/CombinationalLogic.cpp"
     "src/Transforms/OptimizeRandomness/Pass.cpp"
     "src/Transforms/OptimizeRandomness/DistributeRandomness.cpp"
     "src/Transforms/OptimizeRandomness/GadgetDependencies.cpp"
     "src/Transforms/GadgetInsertion/Pass.cpp"
+    "src/Transforms/GadgetInsertion/MaskAndDuplicate.cpp"
     "src/Transforms/GadgetInsertion/TightProver.cpp"
     "src/Transforms/GadgetInsertion/StrongNonInterference.cpp"
     "src/Transforms/GadgetInsertion/ProbeIsolatingNonInterference.cpp"
+    "src/Transforms/GadgetInsertion/CombinedIsolatingNonInterference.cpp"
+    "src/Transforms/OptimizeLatency/Pass.cpp"
     "src/Util/util"
+    "src/Util/SortingNetwork.cpp"
     )
 
 # Find the libraries that correspond to the LLVM components
 # that we wish to use
 llvm_map_components_to_libnames(llvm_libs support core irreader)
 # Link against LLVM libraries
-target_link_libraries(secfir_eda ${llvm_libs})
+target_link_libraries(saireda ${llvm_libs})
 # Link against Circt libraries
-target_link_libraries(secfir_eda
+target_link_libraries(saireda
     ${CIRCT_PATH}/build/lib/libMLIRFIRRTL.a
     ${CIRCT_PATH}/build/lib/libCIRCTFIRParser.a
     ${CIRCT_PATH}/build/lib/libCIRCTEmitVerilog.a
@@ -126,7 +139,7 @@ target_link_libraries(secfir_eda
     ${CIRCT_PATH}/build/lib/libMLIRSV.a)
 
 # Link against MLIR libraries
-target_link_libraries(secfir_eda
+target_link_libraries(saireda
     MLIRSupport
     MLIRStandard  
     MLIRAnalysis 
@@ -138,7 +151,11 @@ target_link_libraries(secfir_eda
     MLIRTranslation)
 
 #Link xml parse library
-target_link_libraries(secfir_eda ${Z3_PATH}/libz3.so)
+target_link_libraries(saireda ${Z3_PATH}/bin/libz3.so)
 
 #Set dependency to result from tablegen
-add_dependencies(secfir_eda MLIRSecFIRIncGen)
+add_dependencies(saireda MLIRSecFIRIncGen)
+
+#Set optimization level
+set(CMAKE_BUILD_TYPE Debug)
+

@@ -57,7 +57,8 @@ def ConstantOp : SecFIROp<"constant", [NoSideEffect, ConstantLike,
   let hasFolder = 1;
   let verifier = [{ return ::verifyConstantOp(*this); }];
 }
-//-----------------------------------------------------------------===//
+
+//===----------------------------------------------------------------------===//
 // Primitive Operations
 //===----------------------------------------------------------------------===//
 
@@ -72,7 +73,7 @@ class PrimOp<string mnemonic, list<OpTrait> traits = []> :
 // Base class for binary primitive operators.
 class BinaryPrimOp<string mnemonic, string resultTypeFunction, list<OpTrait> traits = []> :
     PrimOp<mnemonic, traits> {
-  let arguments = (ins IntType:$lhs, IntType:$rhs, DefaultValuedAttr<I8Attr, "0">:$dublication);
+  let arguments = (ins IntType:$lhs, IntType:$rhs);
   let results = (outs IntType:$result);
 
   let assemblyFormat = [{
@@ -137,3 +138,40 @@ class UnaryPrimOp<string mnemonic, string resultTypeFunction,
 }
 
 def NotPrimOp : UnaryPrimOp<"not", "getNotResult", IntType, IntType>; 
+
+//===----------------------------------------------------------------------===//
+// Other Operations
+//===----------------------------------------------------------------------===//
+
+def MuxPrimOp : PrimOp<"mux"> {
+  let arguments = (ins UInt1Type:$sel, PassiveType:$high, PassiveType:$low);
+  let results = (outs PassiveType:$result);
+
+  let assemblyFormat = [{
+    `(` operands `)` attr-dict `:` functional-type(operands, $result)
+  }];
+
+  let hasFolder = 1;
+
+  let extraClassDeclaration = [{
+    /// Return the result for inputs with the specified type, returning a null
+    /// type if the input types are invalid.
+    static SecFIRType getResultType(SecFIRType sel, SecFIRType high,
+                                    SecFIRType low, Location loc);
+    static SecFIRType getResultType(ArrayRef<SecFIRType> inputs,
+                                    ArrayRef<int32_t> integers, Location loc) {
+      if (inputs.size() != 3 || integers.size() != 0)
+        return {};
+      return getResultType(inputs[0], inputs[1], inputs[2], loc);
+    }
+  }];
+}
+
+def MajorityPrimOp : PrimOp<"maj">{
+  let arguments = (ins Variadic<IntType>:$inputs);
+  let results = (outs IntType:$result);
+
+  let assemblyFormat = [{
+      `(` operands `)` attr-dict `:` functional-type(operands, $result)
+    }];  
+}

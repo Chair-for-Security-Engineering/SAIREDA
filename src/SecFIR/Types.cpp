@@ -33,6 +33,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+
 #include "SecFIR/Types.h"
 #include "SecFIR/Ops.h"
 #include "SecFIR/Attributes.h"
@@ -98,6 +99,21 @@ void SecFIRType::print(raw_ostream &os) const {
           domain = std::to_string(shareType.getShareDomainOrSentinel());
         os << "share_" << domain << 
             "<" << std::to_string(shareType.getWidthOrSentinel())<< ">";
+      })
+      .Case<DuplicatedShareType>([&](DuplicatedShareType dupShareType){
+        std::string shareDomain;
+        if(dupShareType.getShareDomainOrSentinel() == -1)
+          shareDomain = "X";
+        else
+          shareDomain = std::to_string(dupShareType.getShareDomainOrSentinel());
+        std::string duplicationDomain;
+        if(dupShareType.getDuplicationDomainOrSentinel() == -1)
+          duplicationDomain = "X";
+        else
+          duplicationDomain = std::to_string(dupShareType.getDuplicationDomainOrSentinel());
+        
+        os << "share" << shareDomain << "_dup" << duplicationDomain <<
+            "<" << std::to_string(dupShareType.getWidthOrSentinel())<< ">";
       })
       .Case<RandomnessType>([&](RandomnessType randType){
         os << "rand<" << std::to_string(randType.getWidthOrSentinel()) << ">";
@@ -235,7 +251,7 @@ Type SecFIRDialect::parseType(DialectAsmParser &parser) const {
 bool SecFIRType::isPassive() {
   return TypeSwitch<SecFIRType, bool>(*this)
       .Case<ClockType, ResetType, AsyncResetType, SIntType, UIntType,
-            AnalogType, ShareType, RandomnessType>([](Type) { return true; })
+            AnalogType, ShareType, DuplicatedShareType, RandomnessType>([](Type) { return true; })
       .Case<FlipType>([](Type) { return false; })
       .Case<BundleType>(
           [](BundleType bundleType) { return bundleType.isPassive(); })
@@ -411,6 +427,30 @@ getShareQualifiedTypeShareDomain(secfir::ShareTypeStorage *impl) {
   return shareDomain;
 }
 
+static Optional<int32_t>
+getDuplicatedShareQualifiedTypeWidth(secfir::DuplicatedShareTypeStorage *impl) {
+  int width = impl->width;
+  if (width < 0)
+    return None;
+  return width;
+}
+
+static Optional<int32_t>
+getDuplicatedShareQualifiedTypeShareDomain(secfir::DuplicatedShareTypeStorage *impl) {
+  int shareDomain = impl->shareDomain;
+  if (shareDomain < -1)
+    return None;
+  return shareDomain;
+}
+
+static Optional<int32_t>
+getDuplicatedShareQualifiedTypeDuplicationDomain(secfir::DuplicatedShareTypeStorage *impl) {
+  int duplicationDomain = impl->duplicationDomain;
+  if (duplicationDomain < 0)
+    return None;
+  return duplicationDomain;
+}
+
 
 /// Get an with a known width, or -1 for unknown.
 SIntType SIntType::get(MLIRContext *context, int32_t width) {
@@ -447,12 +487,32 @@ ShareType ShareType::get(MLIRContext *context, int32_t width, int32_t shareDomai
   return Base::get(context, width, shareDomain);
 }
 
+DuplicatedShareType DuplicatedShareType::get(MLIRContext *context, int32_t width, int32_t shareDomain, int32_t duplicationDomain) {
+  assert(width >= -1 && "unknown width");
+  assert(shareDomain >= -2 && "unknown share domain");
+  assert(duplicationDomain >= -1 && "unknown duplication domain");
+  return Base::get(context, width, shareDomain, duplicationDomain);
+}
+
+
 Optional<int32_t> ShareType::getWidth() {
   return getShareQualifiedTypeWidth(this->getImpl());
 }
 
 Optional<int32_t> ShareType::getShareDomain(){
   return getShareQualifiedTypeShareDomain(this->getImpl());
+}
+
+Optional<int32_t> DuplicatedShareType::getWidth() {
+  return getDuplicatedShareQualifiedTypeWidth(this->getImpl());
+}
+
+Optional<int32_t> DuplicatedShareType::getShareDomain(){
+  return getDuplicatedShareQualifiedTypeShareDomain(this->getImpl());
+}
+
+Optional<int32_t> DuplicatedShareType::getDuplicationDomain(){
+  return getDuplicatedShareQualifiedTypeDuplicationDomain(this->getImpl());
 }
 
 RandomnessType RandomnessType::get(MLIRContext *context, int32_t width) {
@@ -509,7 +569,7 @@ SecFIRType FlipType::get(SecFIRType element) {
   // then it is forced into the elements to get the canonical form.
   return TypeSwitch<SecFIRType, SecFIRType>(element)
       .Case<ClockType, ResetType, AsyncResetType, SIntType, UIntType,
-            ShareType, RandomnessType, AnalogType>([&](Type) {
+            ShareType, DuplicatedShareType, RandomnessType, AnalogType>([&](Type) {
         // TODO: This should maintain a canonical form, digging any flips out of
         // sub-types.
         auto *context = element.getContext();

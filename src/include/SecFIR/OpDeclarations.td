@@ -34,6 +34,35 @@
 //
 //===----------------------------------------------------------------------===//
 
+
+//From RTL dialect
+def InstanceOp : SecFIROp<"instance"> {
+  let summary = "Create an instance of a module";
+  let description = [{
+    This represents an instance of a module. The inputs and results are 
+    the referenced module's inputs and outputs.  Any parameters are stored in
+    the "parameters" dictionary.
+  }];
+
+  let arguments = (ins StrAttr:$instanceName,
+                       FlatSymbolRefAttr:$moduleName,
+                       Variadic<AnyType>:$inputs);
+  let results = (outs Variadic<AnyType>);
+
+  let extraClassDeclaration = [{   
+    StringAttr getResultName(size_t i);
+
+    /// Lookup the module or extmodule for the symbol.  This returns null on
+    /// invalid IR.
+    Operation *getReferencedModule();
+  }];
+  
+  let assemblyFormat = [{
+    $instanceName $moduleName `(` $inputs `)` custom<ResultNameList>(attr-dict)
+      `:` functional-type($inputs, results)
+  }];
+}
+
 def NodeOp : SecFIROp<"node", [NoSideEffect, SameOperandsAndResultType]> {
   let summary = "No-op to name a value";
   let description = [{

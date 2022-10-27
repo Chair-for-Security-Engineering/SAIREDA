@@ -22,14 +22,14 @@
  * Please see license.rtf and README for license and further instructions.
  */
 #include "SecFIR/SecFIRDialect.h"
-#include "Passes/TransformationPasses.h"
+#include "Passes/IRTransformation.h"
 
 namespace circt{
 namespace secfir{
 
 using namespace circt;
 
-    void secfir::ToXAG::runOnOperation() {
+    void secfir::MuxToDLogic::runOnOperation() {
 
         //Get a builder vor IR manipulation
         mlir::OpBuilder builder(&getContext());
@@ -45,32 +45,34 @@ using namespace circt;
 
 
         std::vector<mlir::Operation*> deleteOperations;
-        
+            
         for (auto &op : logicBlock.getBodyBlock()->getOperations()) {
-            if(secfir::isa<OrPrimOp>(op)){
-                secfir::OrPrimOp orOp = secfir::dyn_cast<secfir::OrPrimOp>(op);
-                builder.setInsertionPointAfter(orOp);
-                // OR(a, b) = NOT(AND(NOT(a), NOT(b)))
-                auto not_lhs = builder.create<secfir::NotPrimOp>(
-                            orOp.getLoc(), 
-                            orOp.lhs().getType(), 
-                            orOp.lhs());
-                auto not_rhs = builder.create<secfir::NotPrimOp>(
-                            orOp.getLoc(), 
-                            orOp.rhs().getType(), 
-                            orOp.rhs());
-                auto andOp = builder.create<secfir::AndPrimOp>(
-                            orOp.getLoc(),
-                            orOp.getResult().getType(),
-                            not_lhs.getResult(),
-                            not_rhs.getResult());
-                auto not_res = builder.create<secfir::NotPrimOp>(
-                            orOp.getLoc(), 
-                            orOp.getResult().getType(), 
-                            andOp.getResult());
+            if(secfir::isa<secfir::MuxPrimOp>(op)){
+                secfir::MuxPrimOp muxOp = secfir::dyn_cast<secfir::MuxPrimOp>(op);
+                builder.setInsertionPointAfter(muxOp);
+                // MUX(sel, a, b) = OR(AND(high, sel), AND(low, NOT(sel)))
+                auto not_sel = builder.create<secfir::NotPrimOp>(
+                            muxOp.getLoc(),
+                            muxOp.sel().getType(),
+                            muxOp.sel());
+                auto andOpHigh = builder.create<secfir::AndPrimOp>(
+                            muxOp.getLoc(),
+                            muxOp.getResult().getType(),
+                            muxOp.high(),
+                            muxOp.sel());
+                auto andOpLow = builder.create<secfir::AndPrimOp>(
+                            muxOp.getLoc(),
+                            muxOp.getResult().getType(),
+                            muxOp.low(),
+                            not_sel.getResult());
+                auto orOp = builder.create<secfir::OrPrimOp>(
+                            muxOp.getLoc(),
+                            muxOp.getResult().getType(),
+                            andOpHigh.getResult(),
+                            andOpLow.getResult());                
                 //Use the result of the last not operation wherever the result of the 
                 //original or operation is used
-                orOp.getResult().replaceAllUsesWith(not_res.getResult());
+                muxOp.getResult().replaceAllUsesWith(orOp.getResult());
                 //Mark original or operation for removal
                 deleteOperations.push_back(&op);
             }else if(secfir::isa<secfir::NodeOp>(op)){
@@ -80,6 +82,7 @@ using namespace circt;
                 deleteOperations.push_back(&op);
             }
         }
+            
 
         for(unsigned i=0; i<deleteOperations.size(); i++){
             deleteOperations[i]->erase();
@@ -89,15 +92,15 @@ using namespace circt;
 
     }
 
-     void registerToXAGPass(){
-        mlir::PassRegistration<ToXAG>(
-            "xag-transformation", 
-            "Transforms all combinatorial logic to XAG",
-            []() -> std::unique_ptr<mlir::Pass>{return secfir::createToXAGPass();});
+     void registerMuxToDLogicPass(){
+        mlir::PassRegistration<MuxToDLogic>(
+            "mux-to-logic", 
+            "Transforms all mux to digital logic",
+            []() -> std::unique_ptr<mlir::Pass>{return secfir::createMuxToDLogicPass();});
     }
 
-    std::unique_ptr<mlir::Pass> createToXAGPass(){
-	    return std::make_unique<ToXAG>();
+    std::unique_ptr<mlir::Pass> createMuxToDLogicPass(){
+	    return std::make_unique<MuxToDLogic>();
 	}
 
 }

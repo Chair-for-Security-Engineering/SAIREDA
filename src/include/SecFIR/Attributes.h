@@ -21,6 +21,7 @@
  *
  * Please see license.rtf and README for license and further instructions.
  */
+
 #ifndef CIRCT_DIALECT_SECFIR_ATTRIBUTES_H
 #define CIRCT_DIALECT_SECFIR_ATTRIBUTES_H
 

@@ -34,8 +34,13 @@ namespace secfir{
 
 using namespace circt; 
 
+    ///------------------------------------------------------------------------
+    /// ***** Insert Gadget Pass *****
+    ///
     /// Transformation pass that replaces every AND gate with a 
-    /// side-channel secure gadget.
+    /// side-channel secure gadget and inserts required refresh 
+    /// gadgets.
+    ///------------------------------------------------------------------------
     void secfir::InsertGadgetsPass::runOnOperation() {
         llvm::errs() << "---Insert Gadget Pass---\n";
         //Get a builder vor IR manipulation
@@ -66,14 +71,32 @@ using namespace circt;
                                     insertDoubleSniMultiplication(andOp, builder);
                                     refSniGadgetsStatistic++;
                                     mulSniGadgetsStatistic++;
+                                    //Mark original or operation for removal
+                                    deleteOperations.push_back(&internalOp);    
                                 //Handle insertion of PINI gadgets
                                 }else if(parameterMaskingType == MaskingMethod::pini){
                                     insertPiniMultiplication(andOp, builder);
                                     piniGadgetsStatistic++;
+                                    //Mark original or operation for removal
+                                    deleteOperations.push_back(&internalOp);   
                                 //Handle insertion of SPINI gadgets
-                                 }else if(parameterMaskingType == MaskingMethod::spini){
+                                }else if(parameterMaskingType == MaskingMethod::spini){
                                     insertSpiniMultiplication(andOp, builder);
                                     spiniGadgetsStatistic++;
+                                    //Mark original or operation for removal
+                                    deleteOperations.push_back(&internalOp);  
+                                //Handle insertion of CINI gadgets
+                                }else if(parameterMaskingType == MaskingMethod::cini){
+                                    insertCiniMultiplication(andOp, builder);
+                                    ciniGadgetsStatistic++;
+                                    //Mark original or operation for removal
+                                    deleteOperations.push_back(&internalOp);   
+                                //Handle insertion of ICINI gadgets
+                                }else if(parameterMaskingType == MaskingMethod::icini){
+                                    insertIciniMultiplication(andOp, builder);
+                                    iciniGadgetsStatistic++;
+                                    //Mark original or operation for removal
+                                    deleteOperations.push_back(&internalOp); 
                                 //Handle insertion of SNI gadgets
                                 }else if(parameterMaskingType == MaskingMethod::ni ||
                                             parameterMaskingType == MaskingMethod::sni ||
@@ -81,9 +104,9 @@ using namespace circt;
                                             parameterMaskingType== MaskingMethod::probSecNoTightProve){   
                                     insertSniMultiplication(&andOp, &builder);   
                                     mulSniGadgetsStatistic++; 
+                                    //Mark original or operation for removal
+                                    deleteOperations.push_back(&internalOp);   
                                 }
-                                //Mark original or operation for removal
-                                deleteOperations.push_back(&internalOp);
                             }
                         }
                         llvm::errs() << "\r" << std::string(70, ' ') << "\r";
@@ -91,8 +114,9 @@ using namespace circt;
                         for(unsigned i=0; i<deleteOperations.size(); i++){
                             deleteOperations[i]->erase();
                         } 
-                        //For PINI and doubleSNI gadgets nothing else is to do
+                        //For PINI, CINI and doubleSNI gadgets nothing else is to do
                         if(parameterMaskingType == MaskingMethod::pini ||
+                                parameterMaskingType == MaskingMethod::cini ||
                                 parameterMaskingType == MaskingMethod::doubleSni){
                             //Mark current block as secure
                             secureBlockStatistic++;
@@ -156,237 +180,64 @@ using namespace circt;
 	    return std::make_unique<InsertGadgetsPass>();
 	}
 
-
-        /// Function that creates a shared implementation of a given module.
-    secfir::ModuleOp secfir::InsertGadgetsLogicPass::maskModule(
-            secfir::ModuleOp &module, 
-            std::vector<mlir::Attribute> toShare
-    ){
-        //Get builder for IR manipulation
+    ///------------------------------------------------------------------------
+    //// ***** Define Gadget Type Pass *****
+    ///
+    /// Pass that allows to define the type of a gadget,
+    /// by adding an annotation to the according operation.
+    ///------------------------------------------------------------------------
+    void secfir::DefineGadgetTypePass::runOnOperation() {
+        llvm::errs() << "---Define Gadget Type Pass---\n";
+        //Get a builder vor IR manipulation
         mlir::OpBuilder builder(&getContext());
-        unsigned numberShares = parameterOrder+1;
-        //Get input and output signals of original module
-        secfir::SmallVector<secfir::ModulePortInfo, 4> oldPorts;
-        module.getPortInfo(oldPorts);
-        //Count number of ports that should be shared.
-        //Number of 1's (ASCII) in encoding
-        unsigned numberOfSharedPorts = 0;
-        for(unsigned i=0; i<oldPorts.size(); i++)
-            if(toShare.at(i).dyn_cast<mlir::BoolAttr>().getValue()) numberOfSharedPorts++;
-        //Create a new list for input and output ports, where the defined port can 
-        //be shared
-        secfir::SmallVector<secfir::ModulePortInfo, 8> newPorts;
-        newPorts.reserve(oldPorts.size()+numberOfSharedPorts*(numberShares-1));
-        //Go though all ports and create the defined number of shares if necessary
-        for(unsigned i=0; i<oldPorts.size(); i++){
-            auto &port = oldPorts[i];
-            //Check whether current port should be shared 
-            //(encoding bit set to 1 (ASCII))
-            if(toShare.at(i).dyn_cast<mlir::BoolAttr>().getValue()){
-                for(unsigned share=0; share<numberShares; share++){
-                    //Create a name for the share
-                    auto nameShare = builder.getStringAttr(
-                        port.name.getValue().str() + "_" + std::to_string(share));
-                    int32_t width;
-                    //Get width of the port
-                    if(port.type.isa<secfir::FlipType>()){
-                        secfir::FlipType fType = port.type.dyn_cast<secfir::FlipType>();
-                        width = fType.getElementType().getBitWidthOrSentinel();
-                        
-                        newPorts.push_back({
-                            nameShare, 
-                            secfir::FlipType::get(secfir::ShareType::get(&getContext(), width, share))});
-                    }else{
-                        width = port.type.getBitWidthOrSentinel();
-                        newPorts.push_back({
-                            nameShare, 
-                            secfir::ShareType::get(&getContext(), width, share)});
-                    }
-                    //Push share to port list
-                    // newPorts.push_back({
-                    //         nameShare, 
-                    //         secfir::ShareType::get(&getContext(), width, share)});
-                }                   
-                for(mlir::Operation* inst : module.getArguments()[i].getUsers()){
-                    auto shareIt = builder.getBoolAttr(true);
-                    inst->setAttr("ToShare", shareIt);
-                }
-            }else{
-                //If port is not shared push original port to list
-                newPorts.push_back({port.name, port.type});
-            }
-        }
-        //Add ports for refreshing randomness
-        // unsigned numberRand = getNumberOfRequiredRandomness(
-        //             module.getBodyBlock(), numberShares);
-        unsigned numberRand = module.getAttrOfType<mlir::IntegerAttr>("RequiredRandomness").getInt();
-        for(unsigned i=0; i<numberRand; i++){
-            //Create a name random input port
-            auto randPortName = builder.getStringAttr("_rand_" + std::to_string(i));
-            auto randType = secfir::RandomnessType::get(&getContext(), 1);
-            newPorts.push_back({randPortName, randType});
-        }
-        //Get the index of the first randomness input port
-        unsigned startIndexFreshRandomness = oldPorts.size() +
-                numberOfSharedPorts*(numberShares-1);
-
-        //Create shares for the outputs
-        //Currently we share all outputs
-        auto typeAttr = module.getAttrOfType<mlir::TypeAttr>(
-                    secfir::ModuleOp::getTypeAttrName());
-        mlir::FunctionType fnType = typeAttr.getValue().cast<mlir::FunctionType>();
-        auto resultNames = module.getAttrOfType<mlir::ArrayAttr>("resultNames");
-        auto resultTypes = fnType.getResults();
-        for(size_t i=0; i<resultTypes.size(); i++){
-            secfir::FlipType fType = resultTypes[i].dyn_cast<secfir::FlipType>();
-            int32_t width = fType.getElementType().getBitWidthOrSentinel();
-            std::string name = resultNames[i].cast<mlir::StringAttr>().getValue().str();
-            for(unsigned share=0; share<numberShares; share++){
-                auto nameShare = builder.getStringAttr(
-                            name + "_" + std::to_string(share));
-                newPorts.push_back({
-                        nameShare, 
-                        secfir::FlipType::get(secfir::ShareType::get(&getContext(), width, share))});
-            }
-        }
-        
-        //Create a new module with the new port list
-        builder.setInsertionPoint(module);
-        auto nameAttr = builder.getStringAttr(module.getName());
-        secfir::ModuleOp newModule = builder.create<secfir::ModuleOp>(
-            module.getLoc(), nameAttr, newPorts);
-
-        //Create a map between the SSA values of the old module and those of the new 
-        //module
-        unsigned mapSize = module.getBodyBlock()->getOperations().size();
-        mlir::DenseMap<mlir::Value, std::vector<mlir::Value>> oldToNewValueMap(mapSize);
-        unsigned j = 0; //Index for the new module list
-        //Go though the list of input ports of the old module
-        for(unsigned i=0; i<oldPorts.size(); i++){
-            if(!toShare.at(i).dyn_cast<mlir::BoolAttr>().getValue()){
-                //Add a single value to the mapping, if the port is not shared
-                std::vector<mlir::Value> singleValue(1);
-                singleValue[0] = newModule.getArguments()[j];
-                oldToNewValueMap[module.getArguments()[i]] = singleValue;
-                j++;
-            }else{ //Encoding bit is 1 (ASCII)
-                //Add the different shares to the mapping for shared ports
-                std::vector<mlir::Value> sharedValue(numberShares);
-                for(unsigned s=0; s<numberShares; s++){
-                    sharedValue[s] = newModule.getArguments()[j];
-                    j++;
-                } 
-                oldToNewValueMap[module.getArguments()[i]] = sharedValue;
-                //Update list of parallel shares for all the created shares
-                for(mlir::Value share : sharedValue){
-                    //Get an instance of the current share domain
-                    secfir::ShareType shareType;
-                    if(share.getType().isa<secfir::ShareType>()){
-                        shareType = share.getType().dyn_cast<
-                                    secfir::ShareType>();
-                    }else{                        
-                        secfir::FlipType fType = share.getType().dyn_cast<secfir::FlipType>();
-                        shareType = fType.getElementType().dyn_cast<secfir::ShareType>();
-                    }
-                    //Add all parallel shares to the list of parallel shares
-                    for(mlir::Value parallelShare : sharedValue){
-                        //Ignore the same share
-                        if(parallelShare == share) continue;
-                        //Add the parallel share to the list of the current share
-                        shareType.setParallelShare(share, parallelShare);
+        //Define gadget options
+        StringAttr hpc1 = builder.getStringAttr("HPC_1");
+        StringAttr hpc2 = builder.getStringAttr("HPC_2");
+        //Get current module operation
+        secfir::CircuitOp circuit = getOperation();
+        for(auto &module : circuit.getBody()->getOperations()){
+            if(secfir::isa<secfir::ModuleOp>(module)){
+                secfir::ModuleOp m = secfir::dyn_cast<secfir::ModuleOp>(module);
+                //Go through all combinatorial logic blocks withing this module
+                for (auto &op : m.getBodyBlock()->getOperations()) {
+                    if(secfir::isa<secfir::CombLogicOp>(op)){
+                        secfir::CombLogicOp logicBlock = secfir::dyn_cast<secfir::CombLogicOp>(op);
+                        for (auto &internalOp : logicBlock.getBodyBlock()->getOperations()) {
+                            //Add an annotation depending on the compositional property and defined type
+                            if(secfir::isa<CiniAndGadgetOp>(internalOp) || 
+                                    secfir::isa<PiniAndGadgetOp>(internalOp)){
+                                if(parameterGadgetType == GadgetType::hpc1){
+                                    internalOp.setAttr("GadgetType", hpc1);   
+                                }else if(parameterGadgetType == GadgetType::hpc2){
+                                    internalOp.setAttr("GadgetType", hpc2);
+                                }
+                            }                        
+                        }
                     }
                 }
             }
         }
-
-
-        //Create a list for operations that should be erased at the end
-        mlir::OpBuilder opBuilder(newModule.body());
-        std::vector<mlir::Operation*> deleteOperations;
-        mlir::DenseMap<mlir::Value, std::vector<mlir::Value>> dummyMap;
-        bool nothingToShare = false;
-        //Mark current terminator operation for deletion (will be replaced
-        //by new one)
-        for(auto &searchOp : newModule.getBodyBlock()->getOperations()){
-            if(secfir::dyn_cast<secfir::OutputOp>(searchOp)){
-                deleteOperations.push_back(&searchOp);
-            }
-        }
-        while(!nothingToShare){
-            nothingToShare = true;
-            
-            //Walk though module body and creat shared operation if necessary
-            for (auto &op : module.getBodyBlock()->getOperations()) {
-                //Check whether operation should be shared
-                if(op.getAttrOfType<mlir::IntegerAttr>("ToShare")){
-                    if(secfir::dyn_cast<secfir::ConnectOp>(op)) {
-                        //Handle Connect operation
-                        shareConnect(secfir::dyn_cast<secfir::ConnectOp>(op), 
-                                opBuilder, oldToNewValueMap, numberShares);
-                        nothingToShare = false;
-                    }else if(secfir::isa<secfir::RegOp>(op)){
-                        //Handle Registers
-                        shareRegister(secfir::dyn_cast<secfir::RegOp>(op), 
-                                opBuilder, oldToNewValueMap, dummyMap, numberShares);
-                        deleteOperations.push_back(&op);
-                        nothingToShare = false;
-                    }else if(secfir::dyn_cast<secfir::NotPrimOp>(op)){
-                        //Handle NOT operation
-                        shareNot(secfir::dyn_cast<secfir::NotPrimOp>(op), 
-                                opBuilder, oldToNewValueMap, dummyMap, numberShares);
-                        nothingToShare = false;
-                    }else if(secfir::dyn_cast<secfir::XorPrimOp>(op)){
-                        //Handle XOR operation
-                        shareXor(secfir::dyn_cast<secfir::XorPrimOp>(op), 
-                                opBuilder, oldToNewValueMap, dummyMap, numberShares);
-                        nothingToShare = false;
-                    }else if(secfir::dyn_cast<secfir::NodeOp>(op)){
-                        shareNode(secfir::dyn_cast<secfir::NodeOp>(op),
-                                opBuilder, oldToNewValueMap, dummyMap, numberShares);
-                        nothingToShare = false;
-                    }else if(secfir::dyn_cast<secfir::PiniAndGadgetOp>(op)){
-                        //Handle PINI multiplication
-                        insertHPC2(secfir::dyn_cast<secfir::PiniAndGadgetOp>(op),
-                                numberShares, opBuilder, oldToNewValueMap, dummyMap,
-                                newModule.getArguments(), startIndexFreshRandomness);
-                        nothingToShare = false;
-                     }else if(secfir::dyn_cast<secfir::SniPiniAndGadgetOp>(op)){
-                        //Handle SPINI multiplication
-                        insertHPC2withOutputRegister(secfir::dyn_cast<secfir::SniPiniAndGadgetOp>(op),
-                                numberShares, opBuilder, oldToNewValueMap, dummyMap,
-                                newModule.getArguments(), startIndexFreshRandomness);
-                        nothingToShare = false;
-                    }else if(secfir::dyn_cast<secfir::SniAndGadgetOp>(op)){
-                        //Handle SNI multiplication
-                        insertDOMAnd(secfir::dyn_cast<secfir::SniAndGadgetOp>(op),
-                                numberShares, opBuilder, oldToNewValueMap, dummyMap,
-                                newModule.getArguments(), startIndexFreshRandomness);
-                        nothingToShare = false;
-                    }else if(secfir::dyn_cast<secfir::SniRefreshOp>(op)){
-                        //Handle SNI refresh
-                        insertDOMRefresh(secfir::dyn_cast<secfir::SniRefreshOp>(op),
-                                numberShares, opBuilder, oldToNewValueMap, dummyMap,
-                                newModule.getArguments(), startIndexFreshRandomness);
-                        nothingToShare = false;
-                    }else if(secfir::dyn_cast<secfir::OutputOp>(op)){
-                        auto insertionPoint = opBuilder.saveInsertionPoint();
-                        opBuilder.setInsertionPointToEnd(newModule.getBodyBlock());
-                        shareOutput(secfir::dyn_cast<secfir::OutputOp>(op),
-                                opBuilder, oldToNewValueMap, numberShares);
-                        nothingToShare = false;
-                        opBuilder.restoreInsertionPoint(insertionPoint);
-                    }
-                }
-            }   
-        }
-        //Erase all operation that were replaced by gadgets
-        for(unsigned i=0; i<deleteOperations.size(); i++){
-            deleteOperations[i]->erase();
-        } 
-        return newModule;
     }
 
+    void registerDefineGadgetTypePass(){
+        mlir::PassRegistration<DefineGadgetTypePass>(
+            "define-gadget-type", 
+            "Annotates each gadget with the defined type",
+            []() -> std::unique_ptr<mlir::Pass>{return secfir::createDefineGadgetTypePass();});
+    }
+
+    std::unique_ptr<mlir::Pass> createDefineGadgetTypePass(){
+	    return std::make_unique<DefineGadgetTypePass>();
+	}
+
+    ///------------------------------------------------------------------------
+    //// ***** Insert Gadget-Logic Pass *****
+    ///
+    /// Transformation pass that creates a shared and duplicated
+    /// design, by duplicating and inserting the logic of gadgets.
+    ///------------------------------------------------------------------------
     void secfir::InsertGadgetsLogicPass::runOnOperation() {
+        llvm::errs() << "---Insert-Gadget-Logic Pass---\n";
         //Get builder for IR manipulation
          mlir::OpBuilder builder(&getContext());
         // Setup a list of mapping from unmasked to masked modules
@@ -396,17 +247,29 @@ using namespace circt;
         for(auto &m : circuit.getBody()->getOperations()){
             if(secfir::isa<secfir::ModuleOp>(m)){
                 secfir::ModuleOp module = secfir::dyn_cast<secfir::ModuleOp>(m);
-                //Mask module if some of the parts are marked to be shared
+                std::vector<mlir::Attribute> toShare;
+                //Get corresponding attribute if some ports are shared
                 if(module.getAttr("PortsToShare")){                    
                     mlir::ArrayAttr arrayAttr = 
                             module.getAttrOfType<mlir::ArrayAttr>("PortsToShare");
                     auto arrayRef = arrayAttr.getValue();
-                    auto toShare = arrayRef.vec();
-                    
-                    oldToNewModuleMap[module] = maskModule(
-                                module, 
-                                toShare);
+                    toShare = arrayRef.vec();
+                    // oldToNewModuleMap[module] = maskModule(
+                    //             module, 
+                    //             toShare);
+                } else{
+                    //If no port is shared, create a vector of attributes 
+                    //indicating that no port is shared
+                    mlir::BoolAttr DontShareIt = builder.getBoolAttr(false);
+                    for(unsigned i=0; i<module.getArguments().size(); i++){
+                        toShare.push_back(DontShareIt);
+                    }
                 }
+                //Create a new masked and duplicated module
+                oldToNewModuleMap[module] = maskAndDuplicateModule(
+                            module, 
+                            toShare);
+                
             }
         }
         // Finally delete all the unmasked (old) modules.
@@ -429,8 +292,96 @@ using namespace circt;
         return std::make_unique<InsertGadgetsLogicPass>();
     }
 
-    // Add an attribute to the module that is a bitstring that
-    // encodes which input and output ports should be shared.
+
+
+    /// Recursive function that marks all operations that depend on a 
+    /// specified value for sharing, by setting an attribute "ToShare"
+    /// to true.
+    ///
+    /// valueToShare        The value that should be shared
+    /// shareIt             A boolean attribute set to true
+    void markUsersForSharing(
+        mlir::Value valueToShare,
+        mlir::BoolAttr shareIt
+    ){
+        //Do the recursive calls and marking for all users of the specified value
+        for(auto user : valueToShare.getUsers()){
+            //For combinational logic blocks the marking has to be done for the 
+            //users of the respective input to the logic block.
+            if(secfir::isa<secfir::CombLogicOp>(user)){
+                //Get a CombLogicOp
+                secfir::CombLogicOp logicBlock = secfir::dyn_cast<secfir::CombLogicOp>(user);
+                //Find the ID of the respective input to the logic block
+                unsigned in_id = 0;
+                for(; in_id<logicBlock.getOperands().size(); in_id++){
+                    if(logicBlock.getOperands()[in_id] == valueToShare){
+                        break;
+                    }
+                }
+                //Mark all users of that input for sharing
+                for(auto user_in_block: logicBlock.getBodyBlock()->getArguments()[in_id].getUsers()){
+                    //Stop recursive calls if the operation is already marked for sharing
+                    if(!user_in_block->hasAttrOfType<mlir::IntegerAttr>("ToShare")){
+                        //Set ToShare attribute
+                        user_in_block->setAttr("ToShare", shareIt); 
+                        //Recursive calls for all results of that instruction
+                        if(user->getResults().size() > 0){
+                            for(auto res : user_in_block->getResults()){
+                                markUsersForSharing(res, shareIt);
+                            }
+                        }
+                    }
+                }
+            //For the output of an combinational logic block the marking has to be done
+            //for the users of the respective output value
+            } else if(secfir::isa<secfir::OutputCombOp>(user)){
+                //Get the output operation and the corresponding logic block
+                secfir::OutputCombOp combOut = secfir::dyn_cast<secfir::OutputCombOp>(user);
+                secfir::CombLogicOp logicBlock = secfir::dyn_cast<secfir::CombLogicOp>(
+                                combOut.getParentOp());
+                //Mark the output operation for sharing
+                combOut.setAttr("ToShare", shareIt);      
+                //Find the ID of the respective output of the logic block  
+                unsigned out_id=0;        
+                for(; out_id<combOut.getOperands().size(); out_id++){
+                    if(combOut.getOperands()[out_id] == valueToShare){
+                        break;
+                    }
+                }
+                //Mark all users of that output for sharing
+                for(auto user_out_block: logicBlock.getResults()[out_id].getUsers()){
+                    //Stop recursive calls if the operation is already marked for sharing
+                    if(!user_out_block->hasAttrOfType<mlir::IntegerAttr>("ToShare")){
+                        //Set ToShare attribute
+                        user_out_block->setAttr("ToShare", shareIt);
+                        //Recursive calls for all results of that operation
+                        if(user_out_block->getResults().size() > 0){
+                            for(auto res : user_out_block->getResults()){
+                                markUsersForSharing(res, shareIt);
+                            }
+                        }
+                    }
+                }
+            //For all other instructions all users are marked for sharing.
+            //Stop recursive call if the operation is already marked for sharing
+            }else if(!user->hasAttrOfType<mlir::IntegerAttr>("ToShare")){
+                //Mark operation for sharing
+                user->setAttr("ToShare", shareIt);
+                //Recursive call for all results of that operation
+                if(user->getResults().size() > 0){
+                    for(auto res : user->getResults()){
+                        markUsersForSharing(res, shareIt);
+                    }
+                }
+            } 
+        }
+    }
+
+    /// Pass that adds an attribute to the module that is a bitstring that
+    /// encodes which input and output ports should be shared and marks all
+    /// operations dependent on those inputs for sharing, with an attribute
+    /// "ToShare".
+    ///
     void secfir::SetShareAttribute::runOnOperation(){
         //Get current module operation
         secfir::CircuitOp circuit = getOperation();
@@ -460,6 +411,15 @@ using namespace circt;
                 mlir::ArrayRef<mlir::Attribute> arrayRef(toShareVec);
                 mlir::ArrayAttr toShareArrayAttr = builder.getArrayAttr(arrayRef);
                 module.setAttr("PortsToShare", toShareArrayAttr);
+
+                //Mark all operations dependent on shared inputs for sharing
+                auto shareIt = builder.getBoolAttr(true);
+                for(unsigned i=0; i<ports.size(); i++){
+                    if(toShareVec.at(i).dyn_cast<mlir::BoolAttr>().getValue()){
+                        //Call recursive function for setting the attribute         
+                        markUsersForSharing(module.getArguments()[i], shareIt);
+                    }
+                }
             }
         }
     }

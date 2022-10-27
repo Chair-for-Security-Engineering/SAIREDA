@@ -187,8 +187,6 @@ using namespace circt;
     }
 
     /// Function that inserts the logic of the DOM multiplication gadget.
-    /// Algorithm in Cassiers et al. "Hardware Private Circuits:
-    /// From Trivial Composition to Full Verification", 2020.
     /// We added a register at each output to ensure SNI.
     ///
     /// gadget              The SNI multiplication gadget operation
@@ -334,8 +332,8 @@ using namespace circt;
         //Mark the original not operation as shared and remove 
         //the indication that it should be shared
         gadget.removeAttr("ToShare");
-        auto alreadyShared = opBuilder.getBoolAttr(true);
-        gadget.setAttr("Shared", alreadyShared);
+        // auto alreadyShared = opBuilder.getBoolAttr(true);
+        // gadget.setAttr("Shared", alreadyShared);
         //Update list of parallel shares for all the created shares
         for(mlir::Value share : sharedResult){
             //Get an instance of the current share domain
@@ -354,12 +352,12 @@ using namespace circt;
         if(dummyLhs) dummyMap[gadget.lhs()] = dummyValuesLhs;
         if(dummyRhs) dummyMap[gadget.rhs()] = dummyValuesRhs;
         //Mark following operations that use the result as to be shared
-        auto shareIt = opBuilder.getBoolAttr(true);
-        for(auto inst : gadget.getResult().getUsers()){
-            if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
-                inst->setAttr("ToShare", shareIt);
-            }
-        }
+        // auto shareIt = opBuilder.getBoolAttr(true);
+        // for(auto inst : gadget.getResult().getUsers()){
+        //     if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
+        //         inst->setAttr("ToShare", shareIt);
+        //     }
+        // }
         //Check whether the result was already used and replaced by a dummy value.
         //If so then replace the dummy value with the real result
         if(dummyMap.count(gadget.getResult()) != 0){
@@ -367,6 +365,104 @@ using namespace circt;
                 dummyMap[gadget.getResult()][shareId].replaceAllUsesWith(sharedResult[shareId]);
                 dummyMap[gadget.getResult()][shareId].getDefiningOp()->erase();
             }
+        }
+    }
+
+
+    /// Function that inserts the logic of a single DOM multiplication 
+    /// We add a register at each output to ensure SNI
+    ///
+    /// location            Location of the gadget
+    /// opBuilder           An operation builder used to place the logic
+    /// sharedLhs           Vector of shares of the LHS to the gadget
+    /// sharedRhs           Vector of shares of the RHS to the gadget
+    /// sharedResult        Vector where the result shares will be placed,
+    ///                             size needs already to be initialized
+    /// randomness          Vector of random values to use
+    /// clk                 Clock to use for the registers        
+    void placeDomMultiplication(
+            mlir::Location location,
+            mlir::OpBuilder &opBuilder,
+            std::vector<mlir::Value> &sharedLhs,
+            std::vector<mlir::Value> &sharedRhs,
+            std::vector<mlir::Value> &sharedResult,
+            std::vector<mlir::Value> &randomness,
+            mlir::Value clk
+    ){
+        //Ensure same number of shares for both inputs
+        assert(sharedLhs.size() == sharedRhs.size() &&
+                 "Number of shares need to be equal for both inputs!");
+        assert(sharedLhs.size() == sharedResult.size() &&
+                 "Number of shares need to be equal for inputs and result!");
+        //Get number of shares
+        unsigned numberShares = sharedLhs.size();
+        //Mapping from 2D randomness indices to 1D indices
+        unsigned randIndex = 0;
+        std::vector<std::vector<unsigned>> rand(numberShares, 
+                        std::vector<unsigned>(numberShares));
+        for(unsigned i=0; i<numberShares; i++){
+            for(unsigned j=i+1; j<numberShares; j++){
+                rand[i][j] =  randIndex;
+                rand[j][i] = rand[i][j];
+                //Verify that enough randomness is provided
+                assert(randIndex < randomness.size() && "More randomness required!");
+                randIndex++;
+            }
+        }
+        secfir::UIntType uintType = secfir::UIntType::get(
+                                 opBuilder.getContext(), 1);
+        //Define intermediate variables
+        std::vector<std::vector<mlir::Value>> u(numberShares, 
+                        std::vector<mlir::Value>(numberShares));
+        //Create the DOM multiplication logic
+        for(unsigned i=0; i<numberShares; i++){
+            std::vector<mlir::Value> temp;
+            for(unsigned j=0; j<numberShares; j++){
+                if(j==i) continue;
+                auto and_ab_ij = opBuilder.create<secfir::AndPrimOp>(
+                        location,
+                        uintType,
+                        sharedLhs[i],
+                        sharedRhs[j]);
+                auto xor_rand = opBuilder.create<secfir::XorPrimOp>(
+                        location,
+                        and_ab_ij.getResult().getType(),
+                        and_ab_ij.getResult(),
+                        randomness[rand[i][j]]);
+                auto reg_xor = opBuilder.create<secfir::RegOp>(
+                        location,
+                        xor_rand.getResult().getType(),
+                        xor_rand.getResult(),
+                        clk,
+                        opBuilder.getStringAttr("_dom_inter" + std::to_string(i)));
+                if(temp.size() > 0){
+                    auto xor_reg = opBuilder.create<secfir::XorPrimOp>(
+                            location,
+                            reg_xor.getResult().getType(),
+                            reg_xor.getResult(),
+                            temp[temp.size()-1]);
+                    temp.push_back(xor_reg.getResult());
+                }else{
+                    temp.push_back(reg_xor.getResult());
+                }
+            }
+            auto and_ab_i = opBuilder.create<secfir::AndPrimOp>(
+                    location,
+                    sharedLhs[i].getType(),
+                    sharedLhs[i],
+                    sharedRhs[i]);
+            auto xor_temp = opBuilder.create<secfir::XorPrimOp>(
+                    location,
+                    and_ab_i.getResult().getType(),
+                    and_ab_i.getResult(),
+                    temp[temp.size()-1]);
+            auto reg_out = opBuilder.create<secfir::RegOp>( 
+                    location,
+                    xor_temp.getResult().getType(),
+                    xor_temp.getResult(),
+                    clk,
+                    opBuilder.getStringAttr("dom_out" + std::to_string(i)));
+            sharedResult[i] = reg_out.getResult();
         }
     }
 
@@ -463,8 +559,8 @@ using namespace circt;
         //Mark the original operation as shared and remove 
         //the indication that it should be shared
         gadget.removeAttr("ToShare");
-        auto alreadyShared = opBuilder.getBoolAttr(true);
-        gadget.setAttr("Shared", alreadyShared);
+        // auto alreadyShared = opBuilder.getBoolAttr(true);
+        // gadget.setAttr("Shared", alreadyShared);
         //Update list of parallel shares for all the created shares
         for(mlir::Value share : sharedResult){
             //Get an instance of the current share domain
@@ -482,12 +578,12 @@ using namespace circt;
         //Map possible dummy values to the corresponding input value
         if(dummy) dummyMap[gadget.input()] = dummyValuesInput;
         //Mark following operations that use the result as to be shared
-        auto shareIt = opBuilder.getBoolAttr(true);
-        for(auto inst : gadget.getResult().getUsers()){
-            if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
-                inst->setAttr("ToShare", shareIt);
-            }
-        }
+        // auto shareIt = opBuilder.getBoolAttr(true);
+        // for(auto inst : gadget.getResult().getUsers()){
+        //     if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
+        //         inst->setAttr("ToShare", shareIt);
+        //     }
+        // }
         //Check whether the result was already used and replaced by a dummy value.
         //If so then replace the dummy value with the real result
         if(dummyMap.count(gadget.getResult()) != 0){
@@ -495,6 +591,64 @@ using namespace circt;
                 dummyMap[gadget.getResult()][shareId].replaceAllUsesWith(sharedResult[shareId]);
                 dummyMap[gadget.getResult()][shareId].getDefiningOp()->erase();
             }
+        }
+    }
+
+    /// Function that inserts the logic of a single DOM refresh gadget. 
+    /// We add a register at each output to ensure SNI
+    ///
+    /// location            Location of the gadget
+    /// opBuilder           An operation builder used to place the logic
+    /// sharedInput         Vector of shares of the LHS to the gadget
+    /// sharedResult        Vector where the result shares will be placed,
+    ///                             size needs already to be initialized
+    /// randomness          Vector of random values to use
+    /// clk                 Clock to use for the registers        
+    void placeDomRefresh(
+            mlir::Location location,
+            mlir::OpBuilder &opBuilder,
+            std::vector<mlir::Value> &sharedInput,
+            std::vector<mlir::Value> &sharedResult,
+            std::vector<mlir::Value> &randomness,
+            mlir::Value clk
+    ){
+        //Ensure same number of shares for both input and output
+        assert(sharedInput.size() == sharedResult.size() &&
+                 "Number of shares need to be equal for inputs and result!");
+        //Get number of shares
+        unsigned numberShares = sharedInput.size();
+        //Mapping from 2D randomness indices to 1D indices
+        unsigned randIndex = 0;
+        std::vector<std::vector<unsigned>> rand(numberShares, std::vector<unsigned>(numberShares));
+        for(unsigned i=0; i<numberShares; i++){
+            for(unsigned j=i+1; j<numberShares; j++){
+                rand[i][j] =  randIndex;
+                rand[j][i] = rand[i][j];
+                //Verify that enough randomness is provided
+                assert(randIndex < randomness.size() && "More randomness required!");
+                randIndex++;
+            }
+        }
+        //Create the logic of the refresh gadget
+        for(unsigned i=0; i<numberShares; i++){
+            std::vector<mlir::Value> temp;
+            temp.push_back(sharedInput[i]);
+            for(unsigned j=0; j<numberShares; j++){
+                if(j==i) continue;
+                auto xor_rand = opBuilder.create<secfir::XorPrimOp>(
+                        location,
+                        temp[temp.size()-1].getType(),
+                        randomness[rand[i][j]],
+                        temp[temp.size()-1]);
+                temp.push_back(xor_rand.getResult());
+            }
+            auto reg = opBuilder.create<secfir::RegOp>(
+                    location, 
+                    temp[temp.size()-1].getType(), 
+                    temp[temp.size()-1], 
+                    clk,
+                    opBuilder.getStringAttr("refresh" + std::to_string(i)));
+            sharedResult[i] = reg.getResult();
         }
     }
 

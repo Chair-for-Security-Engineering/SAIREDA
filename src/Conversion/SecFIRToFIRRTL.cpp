@@ -21,6 +21,7 @@
  *
  * Please see license.rtf and README for license and further instructions.
  */
+
 #include "Conversion/SecFIRToFIRRTL.h"
 
 using namespace circt;
@@ -57,6 +58,9 @@ namespace secfir{
             } else if(type.isa<secfir::RandomnessType>()){
                 auto width = type.dyn_cast<secfir::RandomnessType>().getWidthOrSentinel();
                 return firrtl::UIntType::get(ctx, width);
+            } else if(type.isa<secfir::DuplicatedShareType>()){
+                auto width = type.dyn_cast<secfir::DuplicatedShareType>().getWidthOrSentinel();
+                return firrtl::UIntType::get(ctx, width);
             //Handle analog type
             } else if(type.isa<secfir::AnalogType>()){
                 auto width = type.dyn_cast<secfir::AnalogType>().getBitWidthOrSentinel();
@@ -86,6 +90,11 @@ namespace secfir{
                 } else if(flipType.getElementType().isa<secfir::ShareType>()){
                     auto width = flipType.getElementType().dyn_cast<
                             secfir::ShareType>().getWidthOrSentinel();
+                    auto internType = firrtl::UIntType::get(ctx, width);
+                    return firrtl::FlipType::get(internType);
+                } else if(flipType.getElementType().isa<secfir::DuplicatedShareType>()){
+                    auto width = flipType.getElementType().dyn_cast<
+                            secfir::DuplicatedShareType>().getWidthOrSentinel();
                     auto internType = firrtl::UIntType::get(ctx, width);
                     return firrtl::FlipType::get(internType);
                 //Flipped randomness type
@@ -171,7 +180,8 @@ struct SecFIRCircuitOpConversion : public mlir::OpConversionPattern<secfir::Circ
 
 };
 
-
+/// Conversation pattern from SecFIR modules to FIRRTL modules.
+/// This is a one-to-one replacement conversation.
 struct SecFIRFMyModuleOpConversion : public mlir::OpConversionPattern<secfir::ModuleOp> {
     using mlir::OpConversionPattern<secfir::ModuleOp>::OpConversionPattern;
 
@@ -245,6 +255,116 @@ struct SecFIRFMyModuleOpConversion : public mlir::OpConversionPattern<secfir::Mo
 
 };
 
+/// Conversation pattern from SecFIR instance operation to FIRRTL instance operation.
+/// This also inserts the related subfield access and connect operations.
+struct SecFIRInstanceOpConversion : public mlir::OpConversionPattern<secfir::InstanceOp>{
+    using mlir::OpConversionPattern<secfir::InstanceOp>::OpConversionPattern;
+
+    mlir::LogicalResult matchAndRewrite(
+            secfir::InstanceOp secfirInstanceOp, 
+            mlir::ArrayRef<mlir::Value> operands, 
+            mlir::ConversionPatternRewriter &rewriter
+    ) const final {
+        secfir::SecFIRToFIRRTLTypeConverter converter;
+        llvm::SmallVector<firrtl::BundleType::BundleElement, 3> elements;
+        llvm::SmallVector<secfir::ModulePortInfo, 2> portsIn;
+        llvm::SmallVector<secfir::ModulePortInfo, 2> portsOut;
+
+        mlir::Operation *m;
+        //Get the referenced module operation (as mlir::Operation)
+        if(secfir::isa<firrtl::CircuitOp>(secfirInstanceOp.getParentOp()->getParentOp())){   
+            auto circuit = firrtl::dyn_cast<firrtl::CircuitOp>(secfirInstanceOp.getParentOp()->getParentOp());
+            m = circuit.lookupSymbol(secfirInstanceOp.moduleName());
+        } //TODO: Handle secfir::CircuitOp case
+        //Get module (as secfir::Module)
+        //TODO: Handle firrtl::FModuleOp case
+        auto module = secfir::dyn_cast<secfir::ModuleOp>(m);
+        //Get the name of the module
+        mlir::StringRef name = module.getName();
+        //Get the name of the instance of the module
+        mlir::StringAttr instanceName = rewriter.getStringAttr(
+                        secfirInstanceOp.instanceName().str());
+        //Get input and output ports
+        module.getPortInfo(portsIn);
+        module.getOutputPortInfo(portsOut);
+        //Add ports to a list of bundle elements first all inputs 
+        //than all outputs
+        for(auto port : portsIn){
+            //Get the identifier of the port
+            auto argId = rewriter.getIdentifier(port.getName());
+            //Get the firrtl type of the port
+            mlir::Type type;
+            if(!converter.isFIRRTLType(port.type)){
+                type = converter.convertType(port.type);
+            }else{
+                type = port.type;
+            }
+            auto argType = firrtl::FlipType::get(type.cast<firrtl::FIRRTLType>());
+            //Push port as bundle element to the list
+            elements.push_back(firrtl::BundleType::BundleElement(argId, argType));
+        }
+        for(auto port : portsOut){
+            //Get identifier of the port
+            auto argId = rewriter.getIdentifier(port.getName());
+            //Get the firrtl type of the port
+            mlir::Type type;
+            if(!converter.isFIRRTLType(port.type)){
+                type = converter.convertType(port.type);
+            }else{
+                type = port.type;
+            }
+            auto argType = firrtl::FlipType::get(type.cast<firrtl::FIRRTLType>());
+            //Push port as bundle element to the list
+            elements.push_back(firrtl::BundleType::BundleElement(argId, argType));
+        }
+        //Get a bundle with all the ports to the module
+        auto instType = firrtl::BundleType::get(elements, rewriter.getContext());
+        //Create a type range of all the results
+        mlir::TypeRange typeRange(secfirInstanceOp.getResults());
+
+        //Create a firrtl instance operation
+        firrtl::InstanceOp firrtlInstanceOp = rewriter.create<firrtl::InstanceOp>(
+                    secfirInstanceOp.getLoc(),
+                    instType,
+                    name,
+                    instanceName);
+        //Connect all the inputs
+        unsigned operandId = 0;        
+        for(auto port : portsIn){
+            //Create an operation that accesses the value in the bundle
+            firrtl::SubfieldOp subfield = rewriter.create<firrtl::SubfieldOp>(
+                    secfirInstanceOp.getLoc(),
+                    port.type,
+                    firrtlInstanceOp.getResult(),
+                    port.name);
+            //Connect the input to the access to the bundle
+            rewriter.create<firrtl::ConnectOp>(
+                    secfirInstanceOp.getLoc(),
+                    subfield.getResult(),
+                    secfirInstanceOp.getOperand(operandId));
+            //Increase the operand index
+            operandId++;
+        }
+        //Connect all the outputs
+        unsigned resId=0;
+        for(auto port : portsOut){
+            //Create an operation that accesses the value in the bundle
+            firrtl::SubfieldOp res = rewriter.create<firrtl::SubfieldOp>(
+                    secfirInstanceOp.getLoc(),
+                    port.type,
+                    firrtlInstanceOp.getResult(),
+                    port.name);
+            //Use the output of the access operation wherever the result
+            //was used befor
+            secfirInstanceOp.getResult(resId).replaceAllUsesWith(res);
+            //Increase the index of the result
+            resId++;
+        }
+        //Erase the original secfir instance operation
+        rewriter.eraseOp(secfirInstanceOp);
+        return mlir::success();
+    }
+};
 
 
 ///--Binary Expression Operations----------------------------------------------
@@ -351,6 +471,46 @@ struct SecFIRXorPrimOpConversion : public mlir::OpConversionPattern<secfir::XorP
         //Replace old secfir operation with new firrtl operation
         rewriter.replaceOpWithNewOp<firrtl::XorPrimOp>(secfirXorOp, 
                 resType, lhs, rhs);
+        return mlir::success();
+    }
+};
+
+/// Conversation pattern from SecFIR MUX operation to FIRRTL MUX operation.
+/// This is a one-to-one replacement conversation.
+struct SecFIRMuxPrimOpConversion : public mlir::OpConversionPattern<secfir::MuxPrimOp> {
+    using mlir::OpConversionPattern<secfir::MuxPrimOp>::OpConversionPattern;
+
+    /// Translates secfir.MuxPrimOp to firrtl.MuxPrimOp
+    mlir::LogicalResult matchAndRewrite(
+            secfir::MuxPrimOp secfirMuxOp, 
+            mlir::ArrayRef<mlir::Value> operands, 
+            mlir::ConversionPatternRewriter &rewriter
+    ) const final {
+        secfir::SecFIRToFIRRTLTypeConverter converter;
+        //Get operands
+        mlir::Value sel = operands[0];
+        mlir::Value lhs = operands[1];
+        mlir::Value rhs = operands[2];
+        //Convert operand types if not already a firrtl type
+        if(!converter.isFIRRTLType(sel.getType())){
+            sel.setType(converter.convertType(sel.getType()));
+        }
+        if(!converter.isFIRRTLType(lhs.getType())){
+            lhs.setType(converter.convertType(lhs.getType()));
+        }
+        if(!converter.isFIRRTLType(rhs.getType())){
+            rhs.setType(converter.convertType(rhs.getType()));
+        }
+        //Convert result type if necessary
+        mlir::Type resType;
+        if(!converter.isFIRRTLType(secfirMuxOp.getType())){
+            resType = converter.convertType(secfirMuxOp.getType());
+        }else{
+            resType = secfirMuxOp.getType();
+        }
+        //Replace old secfir operation with new firrtl operation
+        rewriter.replaceOpWithNewOp<firrtl::MuxPrimOp>(secfirMuxOp, 
+                resType, sel, lhs, rhs);
         return mlir::success();
     }
 };
@@ -533,8 +693,10 @@ void secfir::SecFIRToFIRRTLConversionPass::runOnOperation() {
     //Populate converstion pattern list
     patterns.insert<SecFIRCircuitOpConversion, 
                     SecFIRFMyModuleOpConversion,
+                    SecFIRInstanceOpConversion,
                     SecFIROrPrimOpConversion,
                     SecFIRXorPrimOpConversion,
+                    SecFIRMuxPrimOpConversion,
                     SecFIRAndPrimOpConversion, 
                     SecFIRNotPrimOpConversion,
                     SecFIRConstantOpConversion,

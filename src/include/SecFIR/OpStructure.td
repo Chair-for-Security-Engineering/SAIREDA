@@ -69,7 +69,7 @@ def CircuitOp : SecFIROp<"circuit",
   let verifier = [{ return ::verifyCircuitOp(*this); }];
 }
 
-def ModuleOp : SecFIROp<"myModule", 
+def ModuleOp : SecFIROp<"Module", 
       [IsolatedFromAbove, FunctionLike, Symbol, RegionKindInterface,
        SingleBlockImplicitTerminator<"OutputOp">]>{
   let summary = "SecFIR Module";
@@ -99,7 +99,14 @@ def ModuleOp : SecFIROp<"myModule",
       getModulePortInfo(*this, results);
     }
 
+    void getOutputPortInfo(SmallVectorImpl<ModulePortInfo> &results){
+      getModuleOutputPortInfo(*this, results);
+    }
+
     Block *getBodyBlock() { return &body().front(); }
+
+    Operation *getOutputOp() {
+      return &(getBodyBlock()->getOperations().back());}
 
     private:
     // This trait needs access to the hooks defined below.
@@ -125,6 +132,7 @@ def ModuleOp : SecFIROp<"myModule",
    }];
    let printer = [{ return ::print(p, *this); }];
 }
+
 
 def OutputOp : SecFIROp<"output", 
       [Terminator, HasParent<"ModuleOp">, NoSideEffect, ReturnLike]>{

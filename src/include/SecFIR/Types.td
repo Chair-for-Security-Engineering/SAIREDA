@@ -47,6 +47,7 @@ def IntType : Type<CPred<"$_self.isa<IntType>()">, "sint or uint type">;
 def SIntType : Type<CPred<"$_self.isa<SIntType>()">, "sint type">;
 def UIntType : Type<CPred<"$_self.isa<UIntType>()">, "uint type">;
 def ShareType : Type<CPred<"$_self.isa<ShareType>()">, "share type">;
+def DuplicatedShareType : Type<CPred<"$_self.isa<DuplicatedShareType>()">, "duplicated share type">;
 def AnalogType : Type<CPred<"$_self.isa<AnalogType>()">, "analog type">;
 
 def UInt1Type : Type<CPred<"$_self.isa<UIntType>() && "

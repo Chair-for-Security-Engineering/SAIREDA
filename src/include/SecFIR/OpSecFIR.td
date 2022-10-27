@@ -79,4 +79,6 @@ def OutputCombOp : SecFIROp<"outputComb", [Terminator, HasParent<"CombLogicOp">,
                                [{ build($_builder, $_state, llvm::None); }]>];
 
   let assemblyFormat = "attr-dict ($operands^ `:` type($operands))?";
+
+  //let verifier = [{ return ::verifyOutputOp(this); }];
 }

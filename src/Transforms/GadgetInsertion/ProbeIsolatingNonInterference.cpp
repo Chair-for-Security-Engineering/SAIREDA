@@ -93,8 +93,8 @@ using namespace circt;
             newOp.setAttrs(connectOp.getAttrs());
             newOp.removeAttr("ToShare");
             connectOp.removeAttr("ToShare");
-            auto alreadyShared = opBuilder.getBoolAttr(true);
-            connectOp.setAttr("Shared", alreadyShared);
+            // auto alreadyShared = opBuilder.getBoolAttr(true);
+            // connectOp.setAttr("Shared", alreadyShared);
             //Move insertion point for next operation
             opBuilder.setInsertionPointAfter(newOp);
         }     
@@ -139,8 +139,8 @@ using namespace circt;
             opBuilder.setInsertionPointAfter(newOp);
         }    
         regOp.removeAttr("ToShare");
-        auto alreadyShared = opBuilder.getBoolAttr(true);
-        regOp.setAttr("Shared", alreadyShared);
+        // auto alreadyShared = opBuilder.getBoolAttr(true);
+        // regOp.setAttr("Shared", alreadyShared);
         //Update list of parallel shares for all the created shares
         for(mlir::Value share : sharedResult){
             //Get an instance of the current share domain
@@ -156,12 +156,12 @@ using namespace circt;
         //Map the result shares to the result signal of the old module
         oldToNewValueMap[regOp.getResult()] = sharedResult;
         //Mark following operations that use the result as to be shared
-        auto shareIt = opBuilder.getBoolAttr(true);
-        for(auto inst : regOp.getResult().getUsers()){
-            if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
-                inst->setAttr("ToShare", shareIt);
-            }
-        }
+        // auto shareIt = opBuilder.getBoolAttr(true);
+        // for(auto inst : regOp.getResult().getUsers()){
+        //     if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
+        //         inst->setAttr("ToShare", shareIt);
+        //     }
+        // }
 
         //Check whether the result was already used and replaced by a dummy value.
         //If so then replace the dummy value with the real result
@@ -255,8 +255,8 @@ using namespace circt;
         //Mark original operation as shared and remove the mark that
         //indicated it should be shared.
         xorOp.removeAttr("ToShare");
-        auto alreadyShared = opBuilder.getBoolAttr(true);
-        xorOp.setAttr("Shared", alreadyShared);
+        // auto alreadyShared = opBuilder.getBoolAttr(true);
+        // xorOp.setAttr("Shared", alreadyShared);
         //Update list of parallel shares for all the created shares
         for(mlir::Value share : sharedResult){
             //Get an instance of the current share domain
@@ -276,12 +276,12 @@ using namespace circt;
         if(dummyRhs) dummyMap[xorOp.rhs()] = dummyValuesRhs;
 
         //Mark following operations that use the result as to be shared
-        auto shareIt = opBuilder.getBoolAttr(true);
-        for(auto inst : xorOp.getResult().getUsers()){
-            if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
-                inst->setAttr("ToShare", shareIt);
-            }
-        }
+        // auto shareIt = opBuilder.getBoolAttr(true);
+        // for(auto inst : xorOp.getResult().getUsers()){
+        //     if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
+        //         inst->setAttr("ToShare", shareIt);
+        //     }
+        // }
         //Check whether the result was already used and replaced by a dummy value.
         //If so then replace the dummy value with the real result
         if(dummyMap.count(xorOp.getResult()) != 0){
@@ -346,8 +346,8 @@ using namespace circt;
         //Mark the original not operation as shared and remove 
         //the indication that it should be shared
         notOp.removeAttr("ToShare");
-        auto alreadyShared = opBuilder.getBoolAttr(true);
-        notOp.setAttr("Shared", alreadyShared);
+        // auto alreadyShared = opBuilder.getBoolAttr(true);
+        // notOp.setAttr("Shared", alreadyShared);
         //Add all other input shares to the result vector.
         //Either the original value or a dummy value if necessary.
         sharedResult[0] = newOp.getResult();
@@ -377,11 +377,11 @@ using namespace circt;
         oldToNewValueMap[notOp.getResult()] = sharedResult;
         if(dummy) dummyMap[notOp.input()] = dummyValues;
         //Mark following operations that use the result as to be shared
-        auto shareIt = opBuilder.getBoolAttr(true);
-        for(auto inst : notOp.getResult().getUsers())
-            if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
-                inst->setAttr("ToShare", shareIt);
-            }
+        // auto shareIt = opBuilder.getBoolAttr(true);
+        // for(auto inst : notOp.getResult().getUsers())
+        //     if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
+        //         inst->setAttr("ToShare", shareIt);
+        //     }
         //Check whether the result was already used and replaced by a dummy value.
         //If so then replace the dummy value with the real result
         if(dummyMap.count(notOp.getResult()) != 0){
@@ -435,15 +435,15 @@ using namespace circt;
         //Mark the original not operation as shared and remove 
         //the indication that it should be shared
         nodeOp.removeAttr("ToShare");
-        auto alreadyShared = opBuilder.getBoolAttr(true);
-        nodeOp.setAttr("Shared", alreadyShared);
+        // auto alreadyShared = opBuilder.getBoolAttr(true);
+        // nodeOp.setAttr("Shared", alreadyShared);
         //Mark following operations that use the result as to be shared
-        auto shareIt = opBuilder.getBoolAttr(true);
-        for(auto inst : nodeOp.getResult().getUsers()){
-            if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
-                inst->setAttr("ToShare", shareIt);
-            }
-        }
+        // auto shareIt = opBuilder.getBoolAttr(true);
+        // for(auto inst : nodeOp.getResult().getUsers()){
+        //     if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
+        //         inst->setAttr("ToShare", shareIt);
+        //     }
+        // }
     }
 
     /// Function that shares an output operation by marking all shares as outputs.
@@ -467,11 +467,7 @@ using namespace circt;
         }
         opBuilder.create<secfir::OutputOp>(outputOp.getLoc(), outputValues);
 
-        //Mark the original output operation as shared and remove 
-        //the indication that it should be shared
-        outputOp.removeAttr("ToShare");
-        auto alreadyShared = opBuilder.getBoolAttr(true);
-        outputOp.setAttr("Shared", alreadyShared);
+        
     }
 
     /// Function that inserts the logic of the HPC_2 gadget.
@@ -673,8 +669,8 @@ using namespace circt;
         //Mark the original not operation as shared and remove 
         //the indication that it should be shared
         gadget.removeAttr("ToShare");
-        auto alreadyShared = opBuilder.getBoolAttr(true);
-        gadget.setAttr("Shared", alreadyShared);
+        // auto alreadyShared = opBuilder.getBoolAttr(true);
+        // gadget.setAttr("Shared", alreadyShared);
         //Update list of parallel shares for all the created shares
         for(mlir::Value share : sharedResult){
             //Get an instance of the current share domain
@@ -693,12 +689,12 @@ using namespace circt;
         if(dummyLhs) dummyMap[gadget.lhs()] = dummyValuesLhs;
         if(dummyRhs) dummyMap[gadget.rhs()] = dummyValuesRhs;
         //Mark following operations that use the result as to be shared
-        auto shareIt = opBuilder.getBoolAttr(true);
-        for(auto inst : gadget.getResult().getUsers()){
-            if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
-                inst->setAttr("ToShare", shareIt);
-            }
-        }
+        // auto shareIt = opBuilder.getBoolAttr(true);
+        // for(auto inst : gadget.getResult().getUsers()){
+        //     if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
+        //         inst->setAttr("ToShare", shareIt);
+        //     }
+        // }
         //Check whether the result was already used and replaced by a dummy value.
         //If so then replace the dummy value with the real result
         if(dummyMap.count(gadget.getResult()) != 0){
@@ -706,6 +702,303 @@ using namespace circt;
                 dummyMap[gadget.getResult()][shareId].replaceAllUsesWith(sharedResult[shareId]);
                 dummyMap[gadget.getResult()][shareId].getDefiningOp()->erase();
             }
+        }
+    }
+
+    /// Function that inserts the logic of a single HPC_1 gadget with a
+    /// given operation builder. Algorithm in Cassiers et al. 
+    /// "Hardware Private Circuits: From Trivial Composition to 
+    /// Full Verification", 2020.
+    ///
+    /// location            Location of the gadget
+    /// opBuilder           An operation builder used to place the logic
+    /// sharedLhs           Vector of shares of the LHS to the gadget
+    /// sharedRhs           Vector of shares of the RHS to the gadget
+    /// sharedResult        Vector where the result shares will be placed,
+    ///                             size needs already to be initialized
+    /// randomness          Vector of random values to use
+    /// clk                 Clock to use for the registers        
+    void placeHPC1(
+            mlir::Location location,
+            mlir::OpBuilder &opBuilder,
+            std::vector<mlir::Value> &sharedLhs,
+            std::vector<mlir::Value> &sharedRhs,
+            std::vector<mlir::Value> &sharedResult,
+            std::vector<mlir::Value> &randomness,
+            mlir::Value clk,
+            bool pipeline
+    ){
+        //Ensure same number of shares for both inputs
+        assert(sharedLhs.size() == sharedRhs.size() &&
+                 "Number of shares need to be equal for both inputs!");
+        assert(sharedLhs.size() == sharedResult.size() &&
+                 "Number of shares need to be equal for inputs and result!");
+        //Get number of shares
+        unsigned numberShares = sharedLhs.size();
+        //Mapping from 2D randomness indices to 1D indices
+        unsigned randIndex = 0;
+        std::vector<mlir::Value> randomness_ref(numberShares*(numberShares-1)/2);
+        std::vector<mlir::Value> randomness_mul(numberShares*(numberShares-1)/2);
+        std::vector<std::vector<unsigned>> rand(numberShares, std::vector<unsigned>(numberShares));
+        for(unsigned i=0; i<numberShares; i++){
+            for(unsigned j=i+1; j<numberShares; j++){
+                rand[i][j] =  randIndex;
+                rand[j][i] = rand[i][j];
+                //Verify that enough randomness is provided
+                assert(randomness_ref.size()+randIndex < randomness.size() && "More randomness required!");
+                //Divide randomness for refresh and multiplication
+                randomness_ref[randIndex] = randomness[randIndex];
+                randomness_mul[randIndex] = randomness[randomness_ref.size()+randIndex];
+                //Increment randomness index
+                randIndex++;
+            }
+        }
+        //Define intermediate variables
+        std::vector<std::vector<mlir::Value>> z(numberShares, std::vector<mlir::Value>(numberShares));
+        std::vector<mlir::Value> v(numberShares);
+        std::vector<mlir::Value> randRegRes;
+        std::vector<mlir::Value> lhs;
+        //Insert registers for LHS if gadget should be pipelined internally
+        for(unsigned i=0; i<numberShares; i++){
+            if(pipeline){
+                auto regLhs = opBuilder.create<secfir::RegOp>(
+                        location, 
+                        sharedLhs[i].getType(), 
+                        sharedLhs[i], 
+                        clk,
+                        opBuilder.getStringAttr("_hpc_a" + std::to_string(i)));
+                lhs.push_back(regLhs.result());
+            }else{
+                lhs.push_back(sharedLhs[i]);
+            }
+        }
+        //Masking of RHS
+        for(unsigned share_i=0; share_i<numberShares; share_i++){
+            std::vector<mlir::Value> temp_sum;
+            temp_sum.push_back(sharedRhs[share_i]);
+            for(unsigned share_j=0; share_j<numberShares; share_j++){
+                if(share_i == share_j) continue;
+                auto xor_v = opBuilder.create<secfir::XorPrimOp>(
+                    location,
+                    temp_sum[temp_sum.size()-1].getType(),
+                    temp_sum[temp_sum.size()-1],
+                    randomness_ref[rand[share_i][share_j]]);
+                xor_v.setAttr("ModuleReplace", opBuilder.getBoolAttr(true));
+                temp_sum.push_back(xor_v.getResult());
+            }
+            auto reg_v = opBuilder.create<secfir::RegOp>(
+                    location, 
+                    temp_sum[temp_sum.size()-1].getType(), 
+                    temp_sum[temp_sum.size()-1], 
+                    clk,
+                    opBuilder.getStringAttr("_hpc1_ref_v" + std::to_string(share_i)));
+            v[share_i] = reg_v.getResult();
+        }
+        //Multiplication, refresh and second register stage
+        for(unsigned share_i=0; share_i<numberShares; share_i++){
+            for(unsigned share_j=0; share_j<numberShares; share_j++){
+                mlir::Value reg_in;
+                auto and_ab = opBuilder.create<secfir::AndPrimOp>(
+                        location,
+                        lhs[share_i].getType(),
+                        lhs[share_i],
+                        v[share_j]);
+                reg_in = and_ab.getResult();
+                if(share_i != share_j){
+                    auto xor_rand = opBuilder.create<secfir::XorPrimOp>(
+                        location,
+                        and_ab.getResult().getType(),
+                        and_ab.getResult(),
+                        randomness_mul[rand[share_i][share_j]]);
+                    xor_rand.setAttr("ModuleReplace", opBuilder.getBoolAttr(true));
+                    reg_in = xor_rand.getResult();
+                }
+                auto reg_z = opBuilder.create<secfir::RegOp>(
+                    location, 
+                    reg_in.getType(), 
+                    reg_in, 
+                    clk,
+                    opBuilder.getStringAttr("_hpc1_z" + std::to_string(share_i)  + std::to_string(share_j)));
+                z[share_i][share_j] = reg_z.getResult();
+            }
+        }
+        //Reduction
+        for(unsigned share_i=0; share_i<numberShares; share_i++){
+            std::vector<mlir::Value> temp_sum;
+            temp_sum.push_back(z[share_i][share_i]);
+            for(unsigned share_j=0; share_j<numberShares; share_j++){
+                if(share_i == share_j) continue;
+                auto xor_red = opBuilder.create<secfir::XorPrimOp>(
+                        location,
+                        z[share_i][share_j].getType(),
+                        temp_sum[temp_sum.size()-1],
+                        z[share_i][share_j]);
+                temp_sum.push_back(xor_red.getResult());
+            }
+            sharedResult[share_i] = temp_sum[temp_sum.size()-1];
+        }
+    }
+
+    
+    /// Function that inserts the logic of a single HPC_2 gadget with a
+    /// given operation builder. Algorithm in Cassiers et al. 
+    /// "Hardware Private Circuits: From Trivial Composition to 
+    /// Full Verification", 2020.
+    ///
+    /// location            Location of the gadget
+    /// opBuilder           An operation builder used to place the logic
+    /// sharedLhs           Vector of shares of the LHS to the gadget
+    /// sharedRhs           Vector of shares of the RHS to the gadget
+    /// sharedResult        Vector where the result shares will be placed,
+    ///                             size needs already to be initialized
+    /// randomness          Vector of random values to use
+    /// clk                 Clock to use for the registers        
+    void placeHPC2(
+            mlir::Location location,
+            mlir::OpBuilder &opBuilder,
+            std::vector<mlir::Value> &sharedLhs,
+            std::vector<mlir::Value> &sharedRhs,
+            std::vector<mlir::Value> &sharedResult,
+            std::vector<mlir::Value> &randomness,
+            mlir::Value clk,
+            bool pipeline
+    ){
+        //Ensure same number of shares for both inputs
+        assert(sharedLhs.size() == sharedRhs.size() &&
+                 "Number of shares need to be equal for both inputs!");
+        assert(sharedLhs.size() == sharedResult.size() &&
+                 "Number of shares need to be equal for inputs and result!");
+        //Get number of shares
+        unsigned numberShares = sharedLhs.size();
+        //Mapping from 2D randomness indices to 1D indices
+        unsigned randIndex = 0;
+        std::vector<std::vector<unsigned>> rand(numberShares, std::vector<unsigned>(numberShares));
+        for(unsigned i=0; i<numberShares; i++){
+            for(unsigned j=i+1; j<numberShares; j++){
+                rand[i][j] =  randIndex;
+                rand[j][i] = rand[i][j];
+                //Verify that enough randomness is provided
+                assert(randIndex < randomness.size() && "More randomness required!");
+                randIndex++;
+            }
+        }
+        //Define intermediate variables
+        std::vector<std::vector<mlir::Value>> u(numberShares, std::vector<mlir::Value>(numberShares));
+        std::vector<std::vector<mlir::Value>> v(numberShares, std::vector<mlir::Value>(numberShares));
+        std::vector<mlir::Value> randRegRes;
+        std::vector<mlir::Value> lhs;
+        //Insert registers for LHS if gadget should be pipelined internally
+        for(unsigned i=0; i<numberShares; i++){
+            if(pipeline){
+                auto regLhs = opBuilder.create<secfir::RegOp>(
+                        location, 
+                        sharedLhs[i].getType(), 
+                        sharedLhs[i], 
+                        clk,
+                        opBuilder.getStringAttr("_hpc_a" + std::to_string(i)));
+                lhs.push_back(regLhs.result());
+            }else{
+                lhs.push_back(sharedLhs[i]);
+            }
+        }
+        //Create the HPC_2 gadget for the given inputs
+        for(unsigned i=0; i<randomness.size(); i++){
+            auto randReg = opBuilder.create<secfir::RegOp>(
+                location, 
+                randomness[i].getType(), 
+                randomness[i], 
+                clk,
+                opBuilder.getStringAttr("_hpc_r" + std::to_string(i)));
+            randRegRes.push_back(randReg.getResult());
+        } 
+        for(unsigned i=0; i<numberShares; i++){
+            for(unsigned j=0; j<numberShares; j++){
+                if(i==j) continue;
+                auto notLhs = opBuilder.create<secfir::NotPrimOp>(
+                        location, 
+                        lhs[i].getType(), 
+                        lhs[i]);
+                auto and_u = opBuilder.create<secfir::AndPrimOp>(
+                        location,
+                        notLhs.getResult().getType(),
+                        randRegRes[rand[i][j]], //randReg.getResult(),
+                        notLhs.getResult());
+                auto xor_v = opBuilder.create<secfir::XorPrimOp>(
+                        location,
+                        sharedRhs[j].getType(),
+                        sharedRhs[j],
+                        randomness[rand[i][j]]);
+                u[i][j] = and_u.getResult();
+                v[i][j] = xor_v.getResult();
+            }
+        }
+        for(unsigned i=0; i<numberShares; i++){
+            auto regRhs = opBuilder.create<secfir::RegOp>(
+                        location, 
+                        sharedRhs[i].getType(), 
+                        sharedRhs[i], 
+                        clk,
+                        opBuilder.getStringAttr("_hpc_b" + std::to_string(i)));
+            auto and_ab = opBuilder.create<secfir::AndPrimOp>(
+                        location,
+                        lhs[i].getType(),
+                        lhs[i],
+                        regRhs.getResult());
+            auto reg_ab = opBuilder.create<secfir::RegOp>(
+                        location, 
+                        and_ab.getResult().getType(), 
+                        and_ab.getResult(), 
+                        clk,
+                        opBuilder.getStringAttr("_hpc_ab" + std::to_string(i)));
+
+            std::vector<mlir::Value> temp;
+            for(unsigned j=0; j<numberShares; j++){
+                if(i==j) continue;
+                auto reg_v = opBuilder.create<secfir::RegOp>(
+                        location, 
+                        v[i][j].getType(), 
+                        v[i][j], 
+                        clk,
+                        opBuilder.getStringAttr("_hpc_v" + std::to_string(i)+ std::to_string(j)));
+                auto and_av = opBuilder.create<secfir::AndPrimOp>(
+                        location,
+                        lhs[i].getType(),
+                        lhs[i],
+                        reg_v.getResult());
+                auto reg_av = opBuilder.create<secfir::RegOp>(
+                        location, 
+                        and_av.getResult().getType(), 
+                        and_av.getResult(), 
+                        clk,
+                        opBuilder.getStringAttr("_hpc_av" + std::to_string(i)+ std::to_string(j)));
+                auto reg_u = opBuilder.create<secfir::RegOp>(
+                        location, 
+                        u[i][j].getType(), 
+                        u[i][j], 
+                        clk,
+                        opBuilder.getStringAttr("_hpc_u" + std::to_string(i)+ std::to_string(j)));
+                auto xor_avu = opBuilder.create<secfir::XorPrimOp>(
+                        location,
+                        reg_av.getResult().getType(),
+                        reg_av.getResult(),
+                        reg_u.getResult());
+                if(temp.size() > 0){
+                    auto xor_sum = opBuilder.create<secfir::XorPrimOp>(
+                            location,
+                            xor_avu.getResult().getType(),
+                            xor_avu.getResult(),
+                            temp[temp.size()-1]);
+                    temp.push_back(xor_sum.getResult());
+                }else{
+                    temp.push_back(xor_avu.getResult());
+                }
+            }
+            auto xor_sum = opBuilder.create<secfir::XorPrimOp>(
+                    location,
+                    reg_ab.getResult().getType(),
+                    reg_ab.getResult(),
+                    temp[temp.size()-1]);
+            sharedResult[i] = xor_sum.getResult();
         }
     }
 
@@ -915,8 +1208,8 @@ using namespace circt;
         //Mark the original not operation as shared and remove 
         //the indication that it should be shared
         gadget.removeAttr("ToShare");
-        auto alreadyShared = opBuilder.getBoolAttr(true);
-        gadget.setAttr("Shared", alreadyShared);
+        // auto alreadyShared = opBuilder.getBoolAttr(true);
+        // gadget.setAttr("Shared", alreadyShared);
         //Update list of parallel shares for all the created shares
         for(mlir::Value share : sharedResult){
             //Get an instance of the current share domain
@@ -935,12 +1228,12 @@ using namespace circt;
         if(dummyLhs) dummyMap[gadget.lhs()] = dummyValuesLhs;
         if(dummyRhs) dummyMap[gadget.rhs()] = dummyValuesRhs;
         //Mark following operations that use the result as to be shared
-        auto shareIt = opBuilder.getBoolAttr(true);
-        for(auto inst : gadget.getResult().getUsers()){
-            if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
-                inst->setAttr("ToShare", shareIt);
-            }
-        }
+        // auto shareIt = opBuilder.getBoolAttr(true);
+        // for(auto inst : gadget.getResult().getUsers()){
+        //     if(!inst->hasAttrOfType<mlir::IntegerAttr>("Shared")){
+        //         inst->setAttr("ToShare", shareIt);
+        //     }
+        // }
         //Check whether the result was already used and replaced by a dummy value.
         //If so then replace the dummy value with the real result
         if(dummyMap.count(gadget.getResult()) != 0){

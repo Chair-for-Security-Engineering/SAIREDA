@@ -152,6 +152,7 @@ using namespace mlir;
     class SIntType;
     class UIntType;
     class ShareType;
+    class DuplicatedShareType;
     class RandomnessType;
     /// This is the common base class between SIntType and UIntType.
     class IntType : public SecFIRType {
@@ -164,6 +165,7 @@ using namespace mlir;
         bool isSigned() { return isa<SIntType>(); }
         bool isUnsigned() { return isa<UIntType>(); }
         bool isShare() { return isa<ShareType>(); }
+        bool isDuplicatedShare() { return isa<DuplicatedShareType>(); }
         bool isRandomness() { return isa<RandomnessType>(); }
 
         /// Return true if this integer type has a known width.
@@ -180,7 +182,8 @@ using namespace mlir;
 
         static bool classof(Type type) {
             return type.isa<SIntType>() || type.isa<UIntType>() || 
-                    type.isa<ShareType>() || type.isa<RandomnessType>();
+                    type.isa<ShareType>() || type.isa<DuplicatedShareType>() || 
+                    type.isa<RandomnessType>();
         }
     };
 
@@ -404,6 +407,88 @@ using namespace mlir;
             }  
             return success();      
         }
+
+    };
+
+    //===----------------------------------------------------------------------===//
+    // Duplicated Share Type
+    //===----------------------------------------------------------------------===//
+    struct DuplicatedShareTypeStorage : mlir::TypeStorage {
+        DuplicatedShareTypeStorage(int32_t width, int32_t shareDomain, int32_t duplicationDomain) : 
+                        width(width), shareDomain(shareDomain), duplicationDomain(duplicationDomain) {}
+        using KeyTy = std::tuple<int32_t, int32_t, int32_t>;
+
+        bool operator==(const KeyTy &key) const { return key == KeyTy(width, shareDomain, duplicationDomain); }
+
+        static DuplicatedShareTypeStorage *construct(TypeStorageAllocator &allocator,
+                                            const KeyTy &key) {
+            return new (allocator.allocate<DuplicatedShareTypeStorage>()) DuplicatedShareTypeStorage(
+                                            std::get<0>(key), std::get<1>(key), std::get<2>(key));
+        }
+
+        static KeyTy getKey(int32_t width, int32_t shareDomain, int32_t duplicationDomain){
+            return KeyTy(width, shareDomain, duplicationDomain);
+        }
+
+        // LogicalResult mutate(
+        //         StorageUniquer::StorageAllocator &allocator, 
+        //         // mlir::Value share,
+        //         // mlir::Value parallelShare,
+        // ){
+        //     // if(parallelShareMap.count(share) == 0){
+        //     //     parallelShareMap[share] = std::vector<mlir::Value>();
+        //     // }
+        //     // parallelShareMap[share].push_back(parallelShare);
+        //     return success();
+        // }
+
+        int32_t width;
+        int32_t shareDomain;
+        int32_t duplicationDomain;
+        //mlir::DenseMap<mlir::Value, std::vector<mlir::Value>> parallelShareMap;
+    };
+
+    template <typename ConcreteType, typename ParentType>
+    class DuplicatedShareQualifiedType
+            : public SecFIRType::TypeBase<ConcreteType, ParentType, DuplicatedShareTypeStorage> {
+    public:
+        using SecFIRType::TypeBase<ConcreteType, ParentType,
+                                    DuplicatedShareTypeStorage>::Base::Base;
+
+        /// Return the width of this type, or -1 if it has none specified.
+        int32_t getWidthOrSentinel() {
+            auto width = static_cast<ConcreteType *>(this)->getWidth();
+            return width.hasValue() ? width.getValue() : -1;
+        }
+
+        /// Return the share domain of this type, or -2 if it has none specified.
+        /// -1 is defined as randomness
+        int32_t getShareDomainOrSentinel() {
+            auto shareDomain = static_cast<ConcreteType *>(this)->getShareDomain();
+            return shareDomain.hasValue() ? shareDomain.getValue() : -2;
+        }
+
+        /// Return the duplication domain of this type, or -1 if it has none specified.
+        int32_t getDuplicationDomainOrSentinel(){
+            auto duplicationDomain = static_cast<ConcreteType *>(this)->getDuplicationDomain();
+            return duplicationDomain.hasValue() ? duplicationDomain.getValue() : -1;
+        }
+    };
+
+    /// An unsigned integer type, whose width may not be known.
+    class DuplicatedShareType : public DuplicatedShareQualifiedType<DuplicatedShareType, IntType> {
+    public:
+        using DuplicatedShareQualifiedType::DuplicatedShareQualifiedType;
+
+        /// Get an with a known width, or -1 for unknown.
+        static DuplicatedShareType get(MLIRContext *context, int32_t width = -1, int32_t shareDomain = -2, int32_t duplicationDomain = -1);
+
+        /// Function that return the bitwidth of the share type
+        Optional<int32_t> getWidth();
+        /// Function that return the domain ID of the share type
+        Optional<int32_t> getShareDomain();
+        /// Function that return the domain ID of the duplication type
+        Optional<int32_t> getDuplicationDomain();
 
     };
 

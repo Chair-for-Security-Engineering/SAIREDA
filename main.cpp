@@ -21,20 +21,26 @@
  *
  * Please see license.rtf and README for license and further instructions.
  */
+//Includes from LLVM and MLIR
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/InitLLVM.h"
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
-#include "circt/Dialect/FIRRTL/Dialect.h"
+//Includes from CIRCT
+#include "circt/Dialect/RTL/Dialect.h"
 #include "circt/FIRParser.h"
 #include "circt/EmitVerilog.h"
+//Includes from SecFIR project
 #include "SecFIR/SecFIRDialect.h"
 #include "SecFIR/Ops.h"
 #include "Passes/Passes.h"
+#include "Passes/IRTransformation.h"
+#include "Passes/GadgetInsertion.h"
 #include "Passes/TransformationPasses.h"
 #include "Passes/OptimizationPasses.h"
+#include "Passes/OptimizeLatency.h"
 #include "Conversion/FIRRTLToSecFIR.h"
 #include "Conversion/SecFIRToFIRRTL.h"
 
@@ -42,7 +48,9 @@ namespace cl = llvm::cl;
 using namespace mlir;
 using namespace circt;
 
-//Commandline options
+/// -------------------------------------------------------
+/// --- Command Line Options ---
+/// -------------------------------------------------------
 static cl::opt<std::string> inputFilename("i",
 	cl::desc("<input fir file>"),
 	cl::init("-"),
@@ -72,12 +80,21 @@ int main(int argc, char** argv)
 	firrtl::registerFIRRTLToSecFIRConversionPass();
 	secfir::registerSecFIRToFIRRTLConversionPass();
 	secfir::registerInsertGadgetsPass();
+	secfir::registerDefineGadgetTypePass();
+	secfir::registerOptimizeAsynchonGadgetLatencyPass();
 	secfir::registerToXAGPass();
+	secfir::registerPipeliningPass();
+	secfir::registerMuxToDLogicPass();
 	secfir::registerFlattenCombinationalNetworkHierarchyPass();
 	secfir::registerInsertCombinationalNetworkHierarchyPass();
+	secfir::registerInsertGateModulePass();
+	secfir::registerReplaceRedundantOperationsPass();
+	secfir::registerRemoveDoubleNotOpPass();
 	secfir::registerRemoveNodeOpPass();
 	secfir::registerSetShareAttributePass();
 	secfir::registerInsertGadgetsLogicPass();
+	secfir::registerMuxToDLogicPass();
+	secfir::registerMajorityToLogicPass();
   	mlir::registerPassManagerCLOptions();
 	//Create a pass pipeline
 	mlir::PassPipelineCLParser passPipeline("", "Compiler passes to run");
@@ -90,7 +107,7 @@ int main(int argc, char** argv)
 		llvm::errs() << errorMessage << "\n";
 		return 1;
 	}
-	//--Parse FIRRTL file -----------------------------------------------------
+	//--Parse FIRRTL file --------------------------------------------------------
 	//Set up MLIR Context
 	MLIRContext context;
 	// Register FIRRTL Dialect

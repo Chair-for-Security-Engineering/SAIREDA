@@ -21,6 +21,7 @@
  *
  * Please see license.rtf and README for license and further instructions.
  */
+
 #include "mlir/IR/OpDefinition.h"
 
 namespace mlir::OpTrait {
@@ -33,4 +34,7 @@ class IsAssociative : public mlir::OpTrait::TraitBase<ConcreteType, IsAssociativ
        // mlir::OperationProperty::Associative);
 //  }	
 };
+
+template <typename ConcreteType>
+class SCAGadget : public mlir::OpTrait::TraitBase<ConcreteType, SCAGadget> {};
 }
