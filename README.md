@@ -26,7 +26,7 @@ cmake --build build
 ```
 
 # Execution
-Example command to read the Keccak design, insert PINI gadgets with normal randomness distribution, insert the gadget logic for second order, and output the result as an Verilog file (Please note the remark for --firrtl-to-secfir):
+Example command to read the Keccak design, insert PINI gadgets with normal randomness distribution, insert the gadget logic for second order, and output the result as an Verilog file (Please note the remark for --firrtl-to-secfir and make sure to create a folder output/verilog/):
 ```
 ./build/saireda -i=designs/KeccakChi.lo.fir --firrtl-to-secfir --insert-combinatorial-logic-hierarchy --xag-transformation --set-share-attribute --insert-gadgets='masking=pini' --define-gadget-type=type='hpc1' --flatten-combinatorial-logic-hierarchy --distribute-randomness='order=2 activeOrder=0 rule=std uniqueRand=non' --insert-gadget-logic='order=2 activeOrder=0' -o=output/verilog/KeccakChi.v
 ```
